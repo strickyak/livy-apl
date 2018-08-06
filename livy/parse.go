@@ -38,7 +38,7 @@ func (o Variable) Eval(c *Context) Val {
 	return z
 }
 func (o Number) Eval(c *Context) Val {
-	return Num{o.F}
+	return &Num{o.F}
 }
 func (o Monad) Eval(c *Context) Val {
 	fn, ok := c.Monadics[o.Op]
