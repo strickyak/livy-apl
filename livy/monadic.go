@@ -6,16 +6,15 @@ import (
 
 type MonadicFunc func(*Context, Val) Val
 
-var Monadics = map[string]MonadicFunc{
-	"double": Double,
+var StandardMonadics = map[string]MonadicFunc{
+	"double": double,
 }
 
-func Double(c *Context, b Val) Val {
-	switch x := b.(type) {
+func double(c *Context, b Val) Val {
+	switch y := b.(type) {
 	case *Num:
-		return &Num{2 * x.F}
-	default:
-		log.Panicf("Wrong type for Double: %T %q", b, b)
+		return &Num{2 * y.F}
 	}
+	log.Panicf("Wrong type for monadic `double`: %T %q", b, b)
 	return nil
 }

@@ -2,6 +2,7 @@ package livy
 
 import (
 	"log"
+	"math"
 	"reflect"
 	"testing"
 )
@@ -16,10 +17,24 @@ var tests = []test{
 	{"+/ rho iota Pi", "M(+/ M(rho M(iota [Pi])))"},
 }
 
+func Standard() *Context {
+	c := &Context{
+		Globals:  make(map[string]Val),
+		Monadics: StandardMonadics,
+		Dyadics:  StandardDyadics,
+	}
+	c.Globals["Pi"] = &Num{math.Pi}
+	c.Globals["Tau"] = &Num{2.0 * math.Pi}
+	c.Globals["Zero"] = &Num{0.0}
+	c.Globals["One"] = &Num{1.0}
+	c.Globals["Two"] = &Num{2.0}
+	return c
+}
+
 func TestMonadic(t *testing.T) {
 	for _, test := range tests {
 		lex := Tokenize(test.src)
-		expr := Parse(lex, 0)
+		expr, _ := Parse(lex, 0)
 		log.Printf("EXPR: %s", expr)
 		got := expr.String()
 
@@ -30,17 +45,26 @@ func TestMonadic(t *testing.T) {
 	println("250 OK")
 }
 
-func TestEval(t *testing.T) {
-	c := &Context{
-		Globals:  make(map[string]Val),
-		Monadics: Monadics,
-	}
-	c.Globals["Pi"] = &Num{3.14}
+func TestEvalMonadic(t *testing.T) {
+	c := Standard()
 	lex := Tokenize("double Pi")
-	expr := Parse(lex, 0)
+	expr, _ := Parse(lex, 0)
 	got := expr.Eval(c)
 
-	want := &Num{6.28}
+	want := &Num{2.0 * math.Pi}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Got %s wanted %s", got, want)
+	}
+	println("250 OK")
+}
+
+func TestEvalDyadic(t *testing.T) {
+	c := Standard()
+	lex := Tokenize("One + Two")
+	expr, _ := Parse(lex, 0)
+	got := expr.Eval(c)
+
+	want := &Num{3.0}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Got %s wanted %s", got, want)
 	}

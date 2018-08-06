@@ -41,15 +41,21 @@ func (o Number) Eval(c *Context) Val {
 	return Num{o.F}
 }
 func (o Monad) Eval(c *Context) Val {
-	m, ok := c.Monadics[o.Op]
+	fn, ok := c.Monadics[o.Op]
 	if !ok {
-		log.Panicf("No such mondaic operator %q", o.Op)
+		log.Panicf("No such monadaic operator %q", o.Op)
 	}
 	b := o.B.Eval(c)
-	return m(c, b)
+	return fn(c, b)
 }
 func (o Dyad) Eval(c *Context) Val {
-	return o.B.Eval(c)
+	fn, ok := c.Dyadics[o.Op]
+	if !ok {
+		log.Panicf("No such dyadaic operator %q", o.Op)
+	}
+	a := o.A.Eval(c)
+	b := o.B.Eval(c)
+	return fn(c, a, b)
 }
 
 func (o Variable) String() string {
@@ -68,7 +74,24 @@ func (o Dyad) String() string {
 	return fmt.Sprintf("D(%s %s %s)", o.A, o.Op, o.B)
 }
 
-func Parse(lex *Lex, i int) Expression {
+func ParseDyadic(lex *Lex, i int) (Expression, int) {
+	tt := lex.Tokens
+	n := len(tt)
+	if i+1 >= n {
+		log.Printf("PD: i+1 (%d) >= n (%d)", i+1, n)
+		return nil, i
+	}
+	op := tt[i+1]
+	if op.Type != OperatorToken {
+		log.Printf("PD: op.Type (%d) != OperatorToken (%d)", op.Type, OperatorToken)
+		return nil, i
+	}
+	b, j := Parse(lex, i+2)
+	log.Printf("PD: Yes b=%s j=%d", b, j)
+	return b, j
+}
+
+func Parse(lex *Lex, i int) (Expression, int) {
 	tt := lex.Tokens
 	n := len(tt)
 	if i >= n {
@@ -84,14 +107,27 @@ func Parse(lex *Lex, i int) Expression {
 		if err != nil {
 			log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
 		}
-		return &Number{num}
+		var a Expression = &Number{num}
+		for {
+			b, j := ParseDyadic(lex, i)
+			if b == nil {
+				return a, j
+			}
+			a, i = &Dyad{a, lex.Tokens[i+1].Str, b}, j
+		}
 	case VariableToken:
-		return &Variable{t.Str}
+		var a Expression = &Variable{t.Str}
+		for {
+			b, j := ParseDyadic(lex, i)
+			if b == nil {
+				return a, j
+			}
+			a, i = &Dyad{a, lex.Tokens[i+1].Str, b}, j
+		}
 	case OperatorToken:
-		b := Parse(lex, i+1)
-		return &Monad{t.Str, b}
-	default:
-		log.Fatalf("wut")
+		b, j := Parse(lex, i+1)
+		return &Monad{t.Str, b}, j
 	}
-	return nil
+	log.Fatalf("bad default: %d", t.Type)
+	panic("not reached")
 }
