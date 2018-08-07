@@ -55,7 +55,20 @@ func (o Monad) Eval(c *Context) Val {
 	log.Printf("Monad:Eval %s %s -> %s", o.Op, b, z)
 	return z
 }
+func (o Dyad) Assign(c *Context) Val {
+	avar, ok := o.A.(*Variable)
+	if !ok {
+		log.Panicf("cannot assign to %s", o.A)
+	}
+	b := o.B.Eval(c)
+	c.Globals[avar.S] = b
+	log.Printf("Assigning %s = %s", avar.S, b)
+	return b
+}
 func (o Dyad) Eval(c *Context) Val {
+	if o.Op == "=" {
+		return o.Assign(c)
+	}
 	fn, ok := c.Dyadics[o.Op]
 	if !ok {
 		log.Panicf("No such dyadaic operator %q", o.Op)
@@ -98,20 +111,20 @@ func (o Cons) String() string {
 }
 
 func ParseDyadic(lex *Lex, i int) (Expression, int) {
-	println("PD <-", i)
+	//log.Printf("PD <- %d", i)
 	tt := lex.Tokens
 	n := len(tt)
 	if i+1 >= n {
-		log.Printf("PD: i+1 (%d) >= n (%d)", i+1, n)
+		//log.Printf("PD: i+1 (%d) >= n (%d)", i+1, n)
 		return nil, i
 	}
 	op := tt[i+1]
 	if op.Type != OperatorToken {
-		log.Printf("PD: op.Type (%d) != OperatorToken (%d)", op.Type, OperatorToken)
+		//log.Printf("PD: op.Type (%d) != OperatorToken (%d)", op.Type, OperatorToken)
 		return nil, i
 	}
 	b, j := Parse(lex, i+2)
-	log.Printf("PD: Yes b=%s j=%d", b, j)
+	//log.Printf("PD: Yes b=%s j=%d", b, j)
 	return b, j
 }
 
@@ -134,10 +147,13 @@ Loop:
 			list = append(list, &Variable{t.Str})
 			i++
 		case OpenToken:
+			log.Printf("Open on token %s at i+1=%d", t, i+1)
 			b, j := Parse(lex, i+1)
+			log.Printf("Close %s returns j=%d", b, j)
 			list = append(list, b)
 			i = j + 1
 		default:
+			log.Printf("Break on token %s at i+1=%d", t, i+1)
 			break Loop
 		}
 	}
@@ -164,7 +180,7 @@ func Parse(lex *Lex, i int) (Expression, int) {
 	}
 	t := tt[i]
 
-	log.Printf("PARSE CONSIDER %d: %s", i, t)
+	//log.Printf("PARSE CONSIDER %d: %s", i, t)
 	switch t.Type {
 	case EndToken:
 		log.Panicf("Parse EndToken")
@@ -188,6 +204,8 @@ func Parse(lex *Lex, i int) (Expression, int) {
 		}
 		i = j + 1
 		return ParseTail(lex, a, i)
+	case CloseToken:
+		log.Panicf("Close paren not expected at position %d: %s", t.Pos, lex.Source)
 	}
 	log.Fatalf("bad default: %d", t.Type)
 	panic("not reached")
