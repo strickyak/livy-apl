@@ -8,6 +8,7 @@ import (
 type DyadicFunc func(*Context, Val, Val) Val
 
 var StandardDyadics = map[string]DyadicFunc{
+	"rho": dyadicRho,
 	"+": WrapMatMatDyadic(WrapFloatDyadic(
 		func(a, b float64) float64 { return a + b })),
 	"-": WrapMatMatDyadic(WrapFloatDyadic(
@@ -22,6 +23,58 @@ var StandardDyadics = map[string]DyadicFunc{
 		func(a, b float64) float64 { return math.Remainder(a, b) })),
 	"mod": WrapMatMatDyadic(WrapFloatDyadic(
 		func(a, b float64) float64 { return math.Mod(a, b) })),
+}
+
+func asMat(a Val) *Mat {
+	mat, ok := a.(*Mat)
+	if !ok {
+		sc := a.GetScalarOrNil()
+		if sc == nil {
+			return nil
+		}
+		return &Mat{M: []Val{sc}, S: []int{1}}
+	}
+	return mat
+}
+
+func dyadicRho(c *Context, a Val, b Val) Val {
+	var shape []int
+
+	am := asMat(a)
+	bm := asMat(b)
+	if am == nil || bm == nil {
+		panic("BAD")
+	}
+
+	for _, e := range am.M {
+		ei := e.GetScalarInt()
+		shape = append(shape, ei)
+	}
+
+	if len(shape) == 0 {
+		return &Mat{nil, nil}
+	}
+
+	var vec []Val
+	vec, _ = recursiveFill(shape, bm.M, vec, 0)
+	return &Mat{M: vec, S: shape}
+}
+
+func recursiveFill(shape []int, source []Val, vec []Val, i int) ([]Val, int) {
+	modulus := len(source)
+	head := shape[0]
+	tail := shape[1:]
+	if len(tail) > 0 {
+		for j := 0; j < head; j++ {
+			vec, i = recursiveFill(tail, source, vec, i)
+		}
+	} else {
+		for j := 0; j < head; j++ {
+			vec = append(vec, source[i])
+			i = (i + 1) % modulus
+		}
+	}
+	return vec, i
 }
 
 type FFF func(float64, float64) float64
