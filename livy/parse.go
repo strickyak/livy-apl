@@ -46,7 +46,10 @@ func (o Monad) Eval(c *Context) Val {
 		log.Panicf("No such monadaic operator %q", o.Op)
 	}
 	b := o.B.Eval(c)
-	return fn(c, b)
+	log.Printf("Monad:Eval %s %s -> ?", o.Op, b)
+	z := fn(c, b)
+	log.Printf("Monad:Eval %s %s -> %s", o.Op, b, z)
+	return z
 }
 func (o Dyad) Eval(c *Context) Val {
 	fn, ok := c.Dyadics[o.Op]
@@ -55,7 +58,10 @@ func (o Dyad) Eval(c *Context) Val {
 	}
 	a := o.A.Eval(c)
 	b := o.B.Eval(c)
-	return fn(c, a, b)
+	log.Printf("Dyad:Eval %s %s %s -> ?", a, o.Op, b)
+	z := fn(c, a, b)
+	log.Printf("Dyad:Eval %s %s %s -> %s", a, o.Op, b, z)
+	return z
 }
 
 func (o Variable) String() string {
@@ -75,6 +81,7 @@ func (o Dyad) String() string {
 }
 
 func ParseDyadic(lex *Lex, i int) (Expression, int) {
+	println("PD <-", i)
 	tt := lex.Tokens
 	n := len(tt)
 	if i+1 >= n {
@@ -99,6 +106,7 @@ func Parse(lex *Lex, i int) (Expression, int) {
 	}
 	t := tt[i]
 
+	log.Printf("PARSE CONSIDER %d: %s", i, t)
 	switch t.Type {
 	case EndToken:
 		log.Panicf("Parse EndToken")
@@ -110,6 +118,7 @@ func Parse(lex *Lex, i int) (Expression, int) {
 		var a Expression = &Number{num}
 		for {
 			b, j := ParseDyadic(lex, i)
+			println("NT PD ->", b, j)
 			if b == nil {
 				return a, j
 			}
@@ -119,6 +128,7 @@ func Parse(lex *Lex, i int) (Expression, int) {
 		var a Expression = &Variable{t.Str}
 		for {
 			b, j := ParseDyadic(lex, i)
+			println("VT PD ->", b, j)
 			if b == nil {
 				return a, j
 			}
@@ -127,6 +137,20 @@ func Parse(lex *Lex, i int) (Expression, int) {
 	case OperatorToken:
 		b, j := Parse(lex, i+1)
 		return &Monad{t.Str, b}, j
+	case OpenToken:
+		a, j := Parse(lex, i+1)
+		if lex.Tokens[j+1].Type != CloseToken {
+			log.Panicf("Expected close paren at position %d: %s", lex.Tokens[j].Pos, lex.Source)
+		}
+		i = j + 1
+		for {
+			b, j := ParseDyadic(lex, i)
+			println("VT PD ->", b, j)
+			if b == nil {
+				return a, j
+			}
+			a, i = &Dyad{a, lex.Tokens[i+1].Str, b}, j
+		}
 	}
 	log.Fatalf("bad default: %d", t.Type)
 	panic("not reached")

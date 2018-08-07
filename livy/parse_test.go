@@ -70,3 +70,16 @@ func TestEvalDyadic(t *testing.T) {
 	}
 	println("250 OK")
 }
+
+func TestEvalParens(t *testing.T) {
+	c := Standard()
+	lex := Tokenize("( 1 + iota 4 ) rho iota 5")
+	expr, _ := Parse(lex, 0)
+	got := expr.Eval(c)
+
+	const want = "[1 2 3 4 ]{0 1 2 3 4 0 1 2 3 4 0 1 2 3 4 0 1 2 3 4 0 1 2 3 } "
+	if got.String() != want {
+		t.Errorf("Got %q wanted %q", got, want)
+	}
+	println("250 OK")
+}

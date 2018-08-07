@@ -13,12 +13,16 @@ const (
 	NumberToken
 	VariableToken
 	OperatorToken
+	OpenToken
+	CloseToken
 )
 
 var MatchWhite = regexp.MustCompile(`^(\s*)`).FindStringSubmatch
 var MatchNumber = regexp.MustCompile(`^([-]?[0-9]+)`).FindStringSubmatch
 var MatchVariable = regexp.MustCompile(`^([A-Z_][A-Za-z0-9_]*)`).FindStringSubmatch
 var MatchOperator = regexp.MustCompile(`^(([-+*/,&|!=<>]([/=]?))|([a-z][A-Za-z0-9_]*))`).FindStringSubmatch
+var MatchOpen = regexp.MustCompile(`^[(]`).FindStringSubmatch
+var MatchClose = regexp.MustCompile(`^[)]`).FindStringSubmatch
 
 type Token struct {
 	Type TokenType
@@ -61,6 +65,9 @@ func Tokenize(s string) *Lex {
 	}
 	if lex.p != len(s) {
 		log.Panicf("OHNO did not parse all of %q: %d", s, lex.p)
+	}
+	for i, t := range lex.Tokens {
+		log.Printf("Token [%d]: %s", i, t)
 	}
 	return lex
 }
@@ -109,6 +116,28 @@ func (lex *Lex) Next() bool {
 			Pos:  lex.p,
 		}
 		lex.p += len(mo[0])
+		lex.Tokens = append(lex.Tokens, t)
+		return true
+	}
+	mopen := MatchOpen(lex.Source[lex.p:])
+	if mopen != nil {
+		t := &Token{
+			Type: OpenToken,
+			Str:  mopen[0],
+			Pos:  lex.p,
+		}
+		lex.p += len(mopen[0])
+		lex.Tokens = append(lex.Tokens, t)
+		return true
+	}
+	mclose := MatchClose(lex.Source[lex.p:])
+	if mclose != nil {
+		t := &Token{
+			Type: CloseToken,
+			Str:  mclose[0],
+			Pos:  lex.p,
+		}
+		lex.p += len(mclose[0])
 		lex.Tokens = append(lex.Tokens, t)
 		return true
 	}
