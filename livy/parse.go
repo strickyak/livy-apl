@@ -30,6 +30,10 @@ type Dyad struct {
 	B  Expression
 }
 
+type Cons struct {
+	L []Expression
+}
+
 func (o Variable) Eval(c *Context) Val {
 	z, ok := c.Globals[o.S]
 	if !ok {
@@ -64,6 +68,15 @@ func (o Dyad) Eval(c *Context) Val {
 	return z
 }
 
+func (o Cons) Eval(c *Context) Val {
+	var vec []Val
+	for _, expr := range o.L {
+		e := expr.Eval(c)
+		vec = append(vec, e)
+	}
+	return &Mat{M: vec, S: []int{len(vec)}}
+}
+
 func (o Variable) String() string {
 	return fmt.Sprintf("[%s]", o.S)
 }
@@ -78,6 +91,10 @@ func (o Monad) String() string {
 
 func (o Dyad) String() string {
 	return fmt.Sprintf("D(%s %s %s)", o.A, o.Op, o.B)
+}
+
+func (o Cons) String() string {
+	return fmt.Sprintf("C(%#v)", o.L)
 }
 
 func ParseDyadic(lex *Lex, i int) (Expression, int) {
@@ -99,13 +116,43 @@ func ParseDyadic(lex *Lex, i int) (Expression, int) {
 }
 
 func ParseTail(lex *Lex, a Expression, i int) (Expression, int) {
+	var list []Expression
+	list = append(list, a)
+Loop:
+	for i+1 < len(lex.Tokens) {
+		t := lex.Tokens[i+1]
+		log.Printf("ParseTail...i+1=[%d]  %s", i+1, t)
+		switch t.Type {
+		case NumberToken:
+			num, err := strconv.ParseFloat(t.Str, 64)
+			if err != nil {
+				log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
+			}
+			list = append(list, &Number{num})
+			i++
+		case VariableToken:
+			list = append(list, &Variable{t.Str})
+			i++
+		case OpenToken:
+			b, j := Parse(lex, i+1)
+			list = append(list, b)
+			i = j + 1
+		default:
+			break Loop
+		}
+	}
+	if len(list) > 1 {
+		a = &Cons{list}
+	}
+
 	for {
 		b, j := ParseDyadic(lex, i)
 		if b != nil {
 			a, i = &Dyad{a, lex.Tokens[i+1].Str, b}, j
 			continue
 		}
-		return a, j
+		i = j
+		return a, i
 	}
 }
 

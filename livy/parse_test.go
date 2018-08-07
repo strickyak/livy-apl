@@ -83,3 +83,16 @@ func TestEvalParens(t *testing.T) {
 	}
 	println("250 OK")
 }
+
+func TestEvalLiteralList(t *testing.T) {
+	c := Standard()
+	lex := Tokenize("2 3  5 rho 4 6 8")
+	expr, _ := Parse(lex, 0)
+	got := expr.Eval(c)
+
+	const want = "[2 3 5 ]{4 6 8 4 6 8 4 6 8 4 6 8 4 6 8 4 6 8 4 6 8 4 6 8 4 6 8 4 6 8 } "
+	if got.String() != want {
+		t.Errorf("Got %q wanted %q", got, want)
+	}
+	println("250 OK")
+}
