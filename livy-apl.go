@@ -15,6 +15,7 @@ import (
 )
 
 var Prompt = flag.String("p", "      ", "APL interpreter prompt")
+var Quiet = flag.Bool("q", false, "supress log messages")
 
 func Run(c *Context, line string) (val Val, complaint string) {
 	defer func() {
@@ -29,15 +30,27 @@ func Run(c *Context, line string) (val Val, complaint string) {
 	return
 }
 
+type Sink struct{}
+
+func (Sink) Write(bb []byte) (int, error) {
+	return len(bb), nil
+}
+
 func main() {
 	flag.Parse()
+	if *Quiet {
+		log.SetOutput(Sink{})
+	} else {
+		log.SetFlags(log.Ltime + log.Lshortfile)
+		log.SetPrefix("##")
+	}
 
 	rl, err := readline.NewEx(&readline.Config{
-		Prompt:      "(>>>)",
+		Prompt:      "      ",
 		HistoryFile: "/tmp/livy-apl.tmp",
 		//AutoComplete:    completer,
 		InterruptPrompt: "^C",
-		EOFPrompt:       "exit",
+		EOFPrompt:       "^D",
 
 		// HistorySearchFold:   true,
 		// FuncFilterInputRune: filterInput,
