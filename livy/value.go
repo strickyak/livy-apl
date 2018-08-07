@@ -1,15 +1,16 @@
 package livy
 
 import (
+	"bytes"
 	"fmt"
 	"log"
-	"bytes"
 )
 
 type Val interface {
 	String() string
 	GetScalarInt() int
 	GetScalarFloat() float64
+	GetScalarOrNil() Val
 }
 
 type Char struct {
@@ -92,4 +93,20 @@ func (o Mat) GetScalarFloat() float64 {
 func (o Box) GetScalarFloat() float64 {
 	log.Panicf("Box cannot be a Scalar Float")
 	panic(0)
+}
+
+func (o Char) GetScalarOrNil() Val {
+	return o
+}
+func (o Num) GetScalarOrNil() Val {
+	return o
+}
+func (o Mat) GetScalarOrNil() Val {
+	if len(o.M) == 1 {
+		return o.M[0].GetScalarOrNil()
+	}
+	return nil
+}
+func (o Box) GetScalarOrNil() Val {
+	return o
 }
