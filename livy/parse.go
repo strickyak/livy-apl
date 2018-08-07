@@ -98,6 +98,16 @@ func ParseDyadic(lex *Lex, i int) (Expression, int) {
 	return b, j
 }
 
+func ParseTail(lex *Lex, a Expression, i int) (Expression, int) {
+	for {
+		b, j := ParseDyadic(lex, i)
+		if b == nil {
+			return a, j
+		}
+		a, i = &Dyad{a, lex.Tokens[i+1].Str, b}, j
+	}
+}
+
 func Parse(lex *Lex, i int) (Expression, int) {
 	tt := lex.Tokens
 	n := len(tt)
@@ -116,24 +126,10 @@ func Parse(lex *Lex, i int) (Expression, int) {
 			log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
 		}
 		var a Expression = &Number{num}
-		for {
-			b, j := ParseDyadic(lex, i)
-			println("NT PD ->", b, j)
-			if b == nil {
-				return a, j
-			}
-			a, i = &Dyad{a, lex.Tokens[i+1].Str, b}, j
-		}
+		return ParseTail(lex, a, i)
 	case VariableToken:
 		var a Expression = &Variable{t.Str}
-		for {
-			b, j := ParseDyadic(lex, i)
-			println("VT PD ->", b, j)
-			if b == nil {
-				return a, j
-			}
-			a, i = &Dyad{a, lex.Tokens[i+1].Str, b}, j
-		}
+		return ParseTail(lex, a, i)
 	case OperatorToken:
 		b, j := Parse(lex, i+1)
 		return &Monad{t.Str, b}, j
@@ -143,14 +139,7 @@ func Parse(lex *Lex, i int) (Expression, int) {
 			log.Panicf("Expected close paren at position %d: %s", lex.Tokens[j].Pos, lex.Source)
 		}
 		i = j + 1
-		for {
-			b, j := ParseDyadic(lex, i)
-			println("VT PD ->", b, j)
-			if b == nil {
-				return a, j
-			}
-			a, i = &Dyad{a, lex.Tokens[i+1].Str, b}, j
-		}
+		return ParseTail(lex, a, i)
 	}
 	log.Fatalf("bad default: %d", t.Type)
 	panic("not reached")
