@@ -101,10 +101,11 @@ func ParseDyadic(lex *Lex, i int) (Expression, int) {
 func ParseTail(lex *Lex, a Expression, i int) (Expression, int) {
 	for {
 		b, j := ParseDyadic(lex, i)
-		if b == nil {
-			return a, j
+		if b != nil {
+			a, i = &Dyad{a, lex.Tokens[i+1].Str, b}, j
+			continue
 		}
-		a, i = &Dyad{a, lex.Tokens[i+1].Str, b}, j
+		return a, j
 	}
 }
 
