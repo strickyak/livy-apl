@@ -9,6 +9,20 @@ type DyadicFunc func(*Context, Val, Val) Val
 
 var StandardDyadics = map[string]DyadicFunc{
 	"rho": dyadicRho,
+
+	"==": WrapMatMatDyadic(WrapFloatBoolDyadic(
+		func(a, b float64) bool { return a == b })),
+	"!=": WrapMatMatDyadic(WrapFloatBoolDyadic(
+		func(a, b float64) bool { return a != b })),
+	"<": WrapMatMatDyadic(WrapFloatBoolDyadic(
+		func(a, b float64) bool { return a < b })),
+	">": WrapMatMatDyadic(WrapFloatBoolDyadic(
+		func(a, b float64) bool { return a > b })),
+	"<=": WrapMatMatDyadic(WrapFloatBoolDyadic(
+		func(a, b float64) bool { return a <= b })),
+	">=": WrapMatMatDyadic(WrapFloatBoolDyadic(
+		func(a, b float64) bool { return a >= b })),
+
 	"+": WrapMatMatDyadic(WrapFloatDyadic(
 		func(a, b float64) float64 { return a + b })),
 	"-": WrapMatMatDyadic(WrapFloatDyadic(
@@ -77,6 +91,7 @@ func recursiveFill(shape []int, source []Val, vec []Val, i int) ([]Val, int) {
 	return vec, i
 }
 
+type FFB func(float64, float64) bool
 type FFF func(float64, float64) float64
 type VVV func(Val, Val) Val
 
@@ -85,6 +100,18 @@ func WrapFloatDyadic(fn FFF) VVV {
 		x := a.GetScalarFloat()
 		y := b.GetScalarFloat()
 		return &Num{fn(x, y)}
+	}
+}
+
+func WrapFloatBoolDyadic(fn FFB) VVV {
+	return func(a, b Val) Val {
+		x := a.GetScalarFloat()
+		y := b.GetScalarFloat()
+		if fn(x, y) {
+			return &Num{1.0}
+		} else {
+			return &Num{0.0}
+		}
 	}
 }
 
@@ -147,9 +174,9 @@ func WrapMatMatDyadic(fn VVV) DyadicFunc {
 			}
 		}
 
-		log.Printf("ONE %s", a)
+		//log.Printf("ONE %s", a)
 		xs := a.GetScalarOrNil()
-		log.Printf("TWO %s", xs)
+		//log.Printf("TWO %s", xs)
 		if xs == nil {
 			log.Panicf("LHS neither matching matrix nor scalar: %s", a)
 		}
