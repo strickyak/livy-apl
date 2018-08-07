@@ -1,13 +1,15 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"math"
 	"os"
+	"strings"
+
+	"github.com/chzyer/readline"
 
 	. "github.com/strickyak/livy-apl/livy"
 )
@@ -30,6 +32,21 @@ func Run(c *Context, line string) (val Val, complaint string) {
 func main() {
 	flag.Parse()
 
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:      "(>>>)",
+		HistoryFile: "/tmp/livy-apl.tmp",
+		//AutoComplete:    completer,
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit",
+
+		// HistorySearchFold:   true,
+		// FuncFilterInputRune: filterInput,
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer rl.Close()
+
 	c := &Context{
 		Globals:  make(map[string]Val),
 		Monadics: StandardMonadics,
@@ -40,18 +57,34 @@ func main() {
 	c.Globals["E"] = &Num{math.E}
 	c.Globals["Phi"] = &Num{math.Phi}
 
-	r := bufio.NewReader(os.Stdin)
+	// r := bufio.NewReader(os.Stdin)
 	i := 0
 	for {
-		fmt.Fprintf(os.Stderr, "%s", *Prompt)
-
-		line, err := r.ReadString('\n')
-		if err == io.EOF {
+		line, err := rl.Readline()
+		if err == readline.ErrInterrupt {
+			if len(line) == 0 {
+				break
+			} else {
+				continue
+			}
+		} else if err == io.EOF {
 			break
 		}
-		if err != nil {
-			log.Fatalf("Cannot read stdin: %s", err)
-		}
+
+		line = strings.TrimSpace(line)
+		log.Printf("<<< %q >>>", line)
+
+		/*
+			fmt.Fprintf(os.Stderr, "%s", *Prompt)
+
+			line, err := r.ReadString('\n')
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatalf("Cannot read stdin: %s", err)
+			}
+		*/
 
 		result, complaint := Run(c, line)
 		if complaint != "" {
