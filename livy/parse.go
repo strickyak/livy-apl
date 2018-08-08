@@ -3,6 +3,7 @@ package livy
 import (
 	"fmt"
 	"log"
+	"runtime/debug"
 	"strconv"
 )
 
@@ -209,4 +210,92 @@ func Parse(lex *Lex, i int) (Expression, int) {
 	}
 	log.Fatalf("bad default: %d", t.Type)
 	panic("not reached")
+}
+
+func NewParseElement(lex *Lex, i int) (z Expression, zi int) {
+	log.Printf("NewParseElement <<< %d", i)
+	defer func() {
+		r := recover()
+		if r != nil {
+			log.Printf("NewParseElement EXCEPTION %s >>> %s ,%d", r, z, zi)
+			debug.PrintStack()
+			panic(r)
+		}
+		log.Printf("NewParseElement >>> %s ,%d", z, zi)
+	}()
+
+	tt := lex.Tokens
+	t := tt[i]
+	switch t.Type {
+	case NumberToken:
+		num, err := strconv.ParseFloat(t.Str, 64)
+		if err != nil {
+			log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
+		}
+		return &Number{num}, i + 1
+	case VariableToken:
+		return &Variable{t.Str}, i + 1
+	case OpenToken:
+		a, j := NewParseExpr(lex, i+1)
+		if lex.Tokens[j].Type != CloseToken {
+			log.Panicf("Expected close paren at position %d: %s", lex.Tokens[j].Pos, lex.Source)
+		}
+		return a, j + 1 // Skip over close paren.
+	}
+	log.Fatal("BAD CASE %d", t.Type)
+	panic(0)
+}
+
+func NewParseExpr(lex *Lex, i int) (z Expression, zi int) {
+	log.Printf("NewParseExpr <<< %d", i)
+	defer func() {
+		r := recover()
+		if r != nil {
+			log.Printf("NewParseExpr EXCEPTION %s >>> %s ,%d", r, z, zi)
+			debug.PrintStack()
+			panic(r)
+		}
+		log.Printf("NewParseExpr >>> %s ,%d", z, zi)
+	}()
+
+	tt := lex.Tokens
+	var vec []Expression
+	for {
+		t := tt[i]
+		log.Printf("NewParseExpr LOOP %s ... %v ,%d", t, vec, i)
+		switch t.Type {
+		case EndToken, CloseToken:
+			goto FINISH
+		case OperatorToken:
+			b, j := NewParseExpr(lex, i+1)
+			if len(vec) > 0 {
+				if len(vec) > 1 {
+					return &Dyad{&Cons{vec}, t.Str, b}, i
+				} else if len(vec) == 1 {
+					return &Dyad{vec[0], t.Str, b}, i
+				}
+			} else {
+				return &Monad{t.Str, b}, j
+			}
+		case NumberToken, VariableToken:
+			log.Printf("Hi")
+			b, j := NewParseElement(lex, i)
+			vec = append(vec, b)
+			log.Printf("Got j=%d b=%s vec=%v", j, b, vec)
+			i = j
+		case OpenToken:
+			b, j := NewParseElement(lex, i)
+			vec = append(vec, b)
+			i = j
+		default:
+			log.Fatalf("bad default: %d", t.Type)
+		}
+	}
+FINISH:
+	if len(vec) > 1 {
+		return &Cons{vec}, i
+	} else if len(vec) == 1 {
+		return vec[0], i
+	}
+	panic(0)
 }

@@ -25,7 +25,7 @@ func Run(c *Context, line string) (val Val, complaint string) {
 		}
 	}()
 	lex := Tokenize(line)
-	expr, _ := Parse(lex, 0)
+	expr, _ := NewParseExpr(lex, 0)
 	val = expr.Eval(c)
 	return
 }
@@ -70,7 +70,6 @@ func main() {
 	c.Globals["E"] = &Num{math.E}
 	c.Globals["Phi"] = &Num{math.Phi}
 
-	// r := bufio.NewReader(os.Stdin)
 	i := 0
 	for {
 		line, err := rl.Readline()
@@ -85,19 +84,6 @@ func main() {
 		}
 
 		line = strings.TrimSpace(line)
-		log.Printf("<<< %q >>>", line)
-
-		/*
-			fmt.Fprintf(os.Stderr, "%s", *Prompt)
-
-			line, err := r.ReadString('\n')
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				log.Fatalf("Cannot read stdin: %s", err)
-			}
-		*/
 
 		result, complaint := Run(c, line)
 		if complaint != "" {
