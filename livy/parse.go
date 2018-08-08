@@ -31,7 +31,7 @@ type Dyad struct {
 	B  Expression
 }
 
-type Cons struct {
+type List struct {
 	L []Expression
 }
 
@@ -82,7 +82,7 @@ func (o Dyad) Eval(c *Context) Val {
 	return z
 }
 
-func (o Cons) Eval(c *Context) Val {
+func (o List) Eval(c *Context) Val {
 	var vec []Val
 	for _, expr := range o.L {
 		e := expr.Eval(c)
@@ -107,121 +107,20 @@ func (o Dyad) String() string {
 	return fmt.Sprintf("D(%s %s %s)", o.A, o.Op, o.B)
 }
 
-func (o Cons) String() string {
+func (o List) String() string {
 	return fmt.Sprintf("C(%#v)", o.L)
 }
 
-func ParseDyadic(lex *Lex, i int) (Expression, int) {
-	//log.Printf("PD <- %d", i)
-	tt := lex.Tokens
-	n := len(tt)
-	if i+1 >= n {
-		//log.Printf("PD: i+1 (%d) >= n (%d)", i+1, n)
-		return nil, i
-	}
-	op := tt[i+1]
-	if op.Type != OperatorToken {
-		//log.Printf("PD: op.Type (%d) != OperatorToken (%d)", op.Type, OperatorToken)
-		return nil, i
-	}
-	b, j := Parse(lex, i+2)
-	//log.Printf("PD: Yes b=%s j=%d", b, j)
-	return b, j
-}
-
-func ParseTail(lex *Lex, a Expression, i int) (Expression, int) {
-	var list []Expression
-	list = append(list, a)
-Loop:
-	for i+1 < len(lex.Tokens) {
-		t := lex.Tokens[i+1]
-		log.Printf("ParseTail...i+1=[%d]  %s", i+1, t)
-		switch t.Type {
-		case NumberToken:
-			num, err := strconv.ParseFloat(t.Str, 64)
-			if err != nil {
-				log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
-			}
-			list = append(list, &Number{num})
-			i++
-		case VariableToken:
-			list = append(list, &Variable{t.Str})
-			i++
-		case OpenToken:
-			log.Printf("Open on token %s at i+1=%d", t, i+1)
-			b, j := Parse(lex, i+1)
-			log.Printf("Close %s returns j=%d", b, j)
-			list = append(list, b)
-			i = j + 1
-		default:
-			log.Printf("Break on token %s at i+1=%d", t, i+1)
-			break Loop
-		}
-	}
-	if len(list) > 1 {
-		a = &Cons{list}
-	}
-
-	for {
-		b, j := ParseDyadic(lex, i)
-		if b != nil {
-			a, i = &Dyad{a, lex.Tokens[i+1].Str, b}, j
-			continue
-		}
-		i = j
-		return a, i
-	}
-}
-
-func Parse(lex *Lex, i int) (Expression, int) {
-	tt := lex.Tokens
-	n := len(tt)
-	if i >= n {
-		log.Panicf("Parse out of tokens: i %d >= len %d", i, n)
-	}
-	t := tt[i]
-
-	//log.Printf("PARSE CONSIDER %d: %s", i, t)
-	switch t.Type {
-	case EndToken:
-		log.Panicf("Parse EndToken")
-	case NumberToken:
-		num, err := strconv.ParseFloat(t.Str, 64)
-		if err != nil {
-			log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
-		}
-		var a Expression = &Number{num}
-		return ParseTail(lex, a, i)
-	case VariableToken:
-		var a Expression = &Variable{t.Str}
-		return ParseTail(lex, a, i)
-	case OperatorToken:
-		b, j := Parse(lex, i+1)
-		return &Monad{t.Str, b}, j
-	case OpenToken:
-		a, j := Parse(lex, i+1)
-		if lex.Tokens[j+1].Type != CloseToken {
-			log.Panicf("Expected close paren at position %d: %s", lex.Tokens[j].Pos, lex.Source)
-		}
-		i = j + 1
-		return ParseTail(lex, a, i)
-	case CloseToken:
-		log.Panicf("Close paren not expected at position %d: %s", t.Pos, lex.Source)
-	}
-	log.Fatalf("bad default: %d", t.Type)
-	panic("not reached")
-}
-
-func NewParseElement(lex *Lex, i int) (z Expression, zi int) {
-	log.Printf("NewParseElement <<< %d", i)
+func ParseElement(lex *Lex, i int) (z Expression, zi int) {
+	log.Printf("ParseElement <<< %d", i)
 	defer func() {
 		r := recover()
 		if r != nil {
-			log.Printf("NewParseElement EXCEPTION %s >>> %s ,%d", r, z, zi)
+			log.Printf("ParseElement EXCEPTION %s >>> %s ,%d", r, z, zi)
 			debug.PrintStack()
 			panic(r)
 		}
-		log.Printf("NewParseElement >>> %s ,%d", z, zi)
+		log.Printf("ParseElement >>> %s ,%d", z, zi)
 	}()
 
 	tt := lex.Tokens
@@ -236,64 +135,67 @@ func NewParseElement(lex *Lex, i int) (z Expression, zi int) {
 	case VariableToken:
 		return &Variable{t.Str}, i + 1
 	case OpenToken:
-		a, j := NewParseExpr(lex, i+1)
+		a, j := ParseExpr(lex, i+1)
 		if lex.Tokens[j].Type != CloseToken {
-			log.Panicf("Expected close paren at position %d: %s", lex.Tokens[j].Pos, lex.Source)
+			log.Panicf("Expected close paren at position lex%d %d: %s", j, lex.Tokens[j].Pos, lex.Source)
 		}
 		return a, j + 1 // Skip over close paren.
 	}
-	log.Fatal("BAD CASE %d", t.Type)
+	log.Fatalf("BAD CASE %d", t.Type)
 	panic(0)
 }
 
-func NewParseExpr(lex *Lex, i int) (z Expression, zi int) {
-	log.Printf("NewParseExpr <<< %d", i)
+func ParseExpr(lex *Lex, i int) (z Expression, zi int) {
+	log.Printf("ParseExpr <<< %d", i)
 	defer func() {
 		r := recover()
 		if r != nil {
-			log.Printf("NewParseExpr EXCEPTION %s >>> %s ,%d", r, z, zi)
+			log.Printf("ParseExpr EXCEPTION %s >>> %s ,%d", r, z, zi)
 			debug.PrintStack()
 			panic(r)
 		}
-		log.Printf("NewParseExpr >>> %s ,%d", z, zi)
+		log.Printf("ParseExpr >>> %s ,%d", z, zi)
 	}()
 
 	tt := lex.Tokens
 	var vec []Expression
 	for {
 		t := tt[i]
-		log.Printf("NewParseExpr LOOP %s ... %v ,%d", t, vec, i)
+		log.Printf("ParseExpr LOOP %s ... %v ,%d", t, vec, i)
 		switch t.Type {
 		case EndToken, CloseToken:
 			goto FINISH
 		case OperatorToken:
-			b, j := NewParseExpr(lex, i+1)
+			b, j := ParseExpr(lex, i+1)
 			if len(vec) > 0 {
 				if len(vec) > 1 {
-					return &Dyad{&Cons{vec}, t.Str, b}, i
+					return &Dyad{&List{vec}, t.Str, b}, j
 				} else if len(vec) == 1 {
-					return &Dyad{vec[0], t.Str, b}, i
+					return &Dyad{vec[0], t.Str, b}, j
 				}
 			} else {
 				return &Monad{t.Str, b}, j
 			}
 		case NumberToken, VariableToken:
 			log.Printf("Hi")
-			b, j := NewParseElement(lex, i)
+			b, j := ParseElement(lex, i)
 			vec = append(vec, b)
 			log.Printf("Got j=%d b=%s vec=%v", j, b, vec)
 			i = j
 		case OpenToken:
-			b, j := NewParseElement(lex, i)
+			b, j := ParseExpr(lex, i+1)
+			log.Printf("case OpenToken: ParseExpr -> j=%d b=%s", j, b)
 			vec = append(vec, b)
-			i = j
+			log.Printf("case OpenToken: ... vec=%v", vec)
+			i = j + 1
+			log.Printf("case OpenToken: ... i=%d", i)
 		default:
 			log.Fatalf("bad default: %d", t.Type)
 		}
 	}
 FINISH:
 	if len(vec) > 1 {
-		return &Cons{vec}, i
+		return &List{vec}, i
 	} else if len(vec) == 1 {
 		return vec[0], i
 	}

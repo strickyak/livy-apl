@@ -25,7 +25,7 @@ func Run(c *Context, line string) (val Val, complaint string) {
 		}
 	}()
 	lex := Tokenize(line)
-	expr, _ := NewParseExpr(lex, 0)
+	expr, _ := ParseExpr(lex, 0)
 	val = expr.Eval(c)
 	return
 }
