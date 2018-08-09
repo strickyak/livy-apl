@@ -94,6 +94,9 @@ func main() {
 		}
 
 		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
 
 		result, complaint := EvalString(c, line)
 		if complaint != nil {
