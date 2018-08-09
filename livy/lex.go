@@ -15,6 +15,8 @@ const (
 	OperatorToken
 	OpenToken
 	CloseToken
+	BraToken
+	KetToken
 )
 
 var MatchWhite = regexp.MustCompile(`^(\s*)`).FindStringSubmatch
@@ -23,6 +25,23 @@ var MatchVariable = regexp.MustCompile(`^([A-Z_][A-Za-z0-9_]*)`).FindStringSubma
 var MatchOperator = regexp.MustCompile(`^(([-+*/,&|!=<>]([/=]?))|([a-z][A-Za-z0-9_]*))`).FindStringSubmatch
 var MatchOpen = regexp.MustCompile(`^[(]`).FindStringSubmatch
 var MatchClose = regexp.MustCompile(`^[)]`).FindStringSubmatch
+var MatchBra = regexp.MustCompile(`^[[]`).FindStringSubmatch
+var MatchKet = regexp.MustCompile(`^[]]`).FindStringSubmatch
+
+type Matcher struct {
+	Type    TokenType
+	MatchFn func(string) []string
+}
+
+var matchers = []Matcher{
+	{NumberToken, MatchNumber},
+	{VariableToken, MatchVariable},
+	{OperatorToken, MatchOperator},
+	{OpenToken, MatchOpen},
+	{CloseToken, MatchClose},
+	{BraToken, MatchBra},
+	{KetToken, MatchKet},
+}
 
 type Token struct {
 	Type TokenType
@@ -73,10 +92,13 @@ func Tokenize(s string) *Lex {
 }
 
 func (lex *Lex) Next() bool {
+	// Skip white space.
 	mw := MatchWhite(lex.Source[lex.p:])
 	if mw != nil {
 		lex.p += len(mw[0])
 	}
+
+	// Check for end of string.
 	if lex.p == len(lex.Source) {
 		t := &Token{
 			Type: EndToken,
@@ -86,60 +108,21 @@ func (lex *Lex) Next() bool {
 		lex.Tokens = append(lex.Tokens, t)
 		return false
 	}
-	mn := MatchNumber(lex.Source[lex.p:])
-	if mn != nil {
-		t := &Token{
-			Type: NumberToken,
-			Str:  mn[0],
-			Pos:  lex.p,
+
+	// Try each matcher until one works.
+	for _, matcher := range matchers {
+		m := matcher.MatchFn(lex.Source[lex.p:])
+		if m != nil {
+			lex.Tokens = append(lex.Tokens, &Token{
+				Type: matcher.Type,
+				Str:  m[0],
+				Pos:  lex.p,
+			})
+			lex.p += len(m[0])
+			return true
 		}
-		lex.p += len(mn[0])
-		lex.Tokens = append(lex.Tokens, t)
-		return true
 	}
-	mv := MatchVariable(lex.Source[lex.p:])
-	if mv != nil {
-		t := &Token{
-			Type: VariableToken,
-			Str:  mv[0],
-			Pos:  lex.p,
-		}
-		lex.p += len(mv[0])
-		lex.Tokens = append(lex.Tokens, t)
-		return true
-	}
-	mo := MatchOperator(lex.Source[lex.p:])
-	if mo != nil {
-		t := &Token{
-			Type: OperatorToken,
-			Str:  mo[0],
-			Pos:  lex.p,
-		}
-		lex.p += len(mo[0])
-		lex.Tokens = append(lex.Tokens, t)
-		return true
-	}
-	mopen := MatchOpen(lex.Source[lex.p:])
-	if mopen != nil {
-		t := &Token{
-			Type: OpenToken,
-			Str:  mopen[0],
-			Pos:  lex.p,
-		}
-		lex.p += len(mopen[0])
-		lex.Tokens = append(lex.Tokens, t)
-		return true
-	}
-	mclose := MatchClose(lex.Source[lex.p:])
-	if mclose != nil {
-		t := &Token{
-			Type: CloseToken,
-			Str:  mclose[0],
-			Pos:  lex.p,
-		}
-		lex.p += len(mclose[0])
-		lex.Tokens = append(lex.Tokens, t)
-		return true
-	}
+
+	// Or else we have a parse error.
 	return false
 }
