@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"math"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/chzyer/readline"
@@ -16,42 +18,50 @@ import (
 
 var Prompt = flag.String("p", "      ", "APL interpreter prompt")
 var Quiet = flag.Bool("q", false, "supress log messages")
+var CrashOnError = flag.Bool("e", false, "crash dump on error")
 
-func Run(c *Context, line string) (val Val, complaint string) {
-	defer func() {
-		r := recover()
-		if r != nil {
-			complaint = fmt.Sprintf("%v", r)
-		}
-	}()
+func EvalString(c *Context, line string) (val Val, err error) {
+	if !*CrashOnError {
+		defer func() {
+			r := recover()
+			if r != nil {
+				if !*Quiet {
+					debug.PrintStack()
+				}
+				err = errors.New(fmt.Sprintf("%v", r))
+			}
+		}()
+	}
 	lex := Tokenize(line)
-	expr, _ := ParseExpr(lex, 0)
+	expr, j := ParseExpr(lex, 0)
+	if j != len(lex.Tokens)-1 {
+		log.Fatalf("FATAL: Parse unfinished: Got %d expected %d", j, len(lex.Tokens)-1)
+	}
 	val = expr.Eval(c)
 	return
 }
 
-type Sink struct{}
+type SinkToNowhere struct{}
 
-func (Sink) Write(bb []byte) (int, error) {
+func (SinkToNowhere) Write(bb []byte) (int, error) {
 	return len(bb), nil
 }
 
 func main() {
 	flag.Parse()
 	if *Quiet {
-		log.SetOutput(Sink{})
+		log.SetOutput(SinkToNowhere{})
 	} else {
 		log.SetFlags(log.Ltime + log.Lshortfile)
 		log.SetPrefix("##")
 	}
 
 	rl, err := readline.NewEx(&readline.Config{
-		Prompt:      "      ",
-		HistoryFile: "/tmp/livy-apl.tmp",
-		//AutoComplete:    completer,
-		InterruptPrompt: "^C",
-		EOFPrompt:       "^D",
-
+		Prompt:          "      ",
+		HistoryFile:     "/tmp/livy-apl.tmp",
+		InterruptPrompt: "*SIGINT*",
+		EOFPrompt:       "*EOF*",
+		// AutoComplete:    completer,
 		// HistorySearchFold:   true,
 		// FuncFilterInputRune: filterInput,
 	})
@@ -85,9 +95,9 @@ func main() {
 
 		line = strings.TrimSpace(line)
 
-		result, complaint := Run(c, line)
-		if complaint != "" {
-			fmt.Fprintf(os.Stderr, "ERROR: %s\n", complaint)
+		result, complaint := EvalString(c, line)
+		if complaint != nil {
+			fmt.Fprintf(os.Stderr, "*** ERROR *** %s\n", complaint)
 		} else {
 			name := fmt.Sprintf("_%d", i)
 			c.Globals[name] = result
