@@ -17,6 +17,7 @@ const (
 	CloseToken
 	BraToken
 	KetToken
+	SemiToken
 )
 
 var MatchWhite = regexp.MustCompile(`^(\s*)`).FindStringSubmatch
@@ -27,6 +28,7 @@ var MatchOpen = regexp.MustCompile(`^[(]`).FindStringSubmatch
 var MatchClose = regexp.MustCompile(`^[)]`).FindStringSubmatch
 var MatchBra = regexp.MustCompile(`^[[]`).FindStringSubmatch
 var MatchKet = regexp.MustCompile(`^[]]`).FindStringSubmatch
+var MatchSemi = regexp.MustCompile(`^[;]`).FindStringSubmatch
 
 type Matcher struct {
 	Type    TokenType
@@ -41,6 +43,7 @@ var matchers = []Matcher{
 	{CloseToken, MatchClose},
 	{BraToken, MatchBra},
 	{KetToken, MatchKet},
+	{SemiToken, MatchSemi},
 }
 
 type Token struct {

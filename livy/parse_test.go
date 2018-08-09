@@ -13,8 +13,8 @@ type test struct {
 }
 
 var tests = []test{
-	{"+/ rho iota 8", "M(+/ M(rho M(iota [#8])))"},
-	{"+/ rho iota Pi", "M(+/ M(rho M(iota [Pi])))"},
+	{"+/ rho iota 8", "Monad(+/ Monad(rho Monad(iota (#8))))"},
+	{"+/ rho iota Pi", "Monad(+/ Monad(rho Monad(iota (Pi))))"},
 }
 
 func Standard() *Context {
@@ -105,6 +105,7 @@ var evalTests = map[string]string{
 	"(3) 4 (5)":                  "[3 ]{3 4 5 } ",
 	"9 rho 9":                    "[9 ]{9 9 9 9 9 9 9 9 9 } ",
 	"3 3 rho rho 3 8 rho iota 9": "[3 3 ]{3 8 3 8 3 8 3 8 3 } ",
+	"A=3 3 rho square iota 10; A[ 1 2 ; 1 2 ]": "[2 2 ]{16 25 49 64 } ",
 }
 
 func TestEval(t *testing.T) {
@@ -112,7 +113,7 @@ func TestEval(t *testing.T) {
 		log.Printf("TestEval <<< %q", src)
 		c := Standard()
 		lex := Tokenize(src)
-		expr, _ := ParseExpr(lex, 0)
+		expr := ParseSeq(lex)
 		got := expr.Eval(c)
 		log.Printf("TestEval === %q", src)
 		log.Printf("TestEval >>> %q", got)

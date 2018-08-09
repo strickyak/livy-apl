@@ -33,10 +33,7 @@ func EvalString(c *Context, line string) (val Val, err error) {
 		}()
 	}
 	lex := Tokenize(line)
-	expr, j := ParseExpr(lex, 0)
-	if j != len(lex.Tokens)-1 {
-		log.Fatalf("FATAL: Parse unfinished: Got %d expected %d", j, len(lex.Tokens)-1)
-	}
+	expr := ParseSeq(lex)
 	val = expr.Eval(c)
 	return
 }

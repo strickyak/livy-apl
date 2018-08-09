@@ -8,6 +8,8 @@ import (
 
 type Val interface {
 	String() string
+	Size() int
+	Ravel() []Val
 	GetScalarInt() int
 	GetScalarFloat() float64
 	GetScalarOrNil() Val
@@ -109,4 +111,30 @@ func (o Mat) GetScalarOrNil() Val {
 }
 func (o Box) GetScalarOrNil() Val {
 	return o
+}
+
+func (o Char) Size() int {
+	return 1
+}
+func (o Num) Size() int {
+	return 1
+}
+func (o Mat) Size() int {
+	return len(o.M)
+}
+func (o Box) Size() int {
+	return 1
+}
+
+func (o Char) Ravel() []Val {
+	return []Val{o}
+}
+func (o Num) Ravel() []Val {
+	return []Val{o}
+}
+func (o Mat) Ravel() []Val {
+	return o.M
+}
+func (o Box) Ravel() []Val {
+	return []Val{o}
 }
