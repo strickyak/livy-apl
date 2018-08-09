@@ -7,6 +7,8 @@ import (
 	"strconv"
 )
 
+var _ = debug.PrintStack
+
 type Expression interface {
 	Eval(*Context) Val
 	String() string
@@ -111,42 +113,8 @@ func (o List) String() string {
 	return fmt.Sprintf("C(%#v)", o.L)
 }
 
-func ParseElement(lex *Lex, i int) (z Expression, zi int) {
-	log.Printf("ParseElement <<< %d", i)
-	defer func() {
-		r := recover()
-		if r != nil {
-			log.Printf("ParseElement EXCEPTION %s >>> %s ,%d", r, z, zi)
-			debug.PrintStack()
-			panic(r)
-		}
-		log.Printf("ParseElement >>> %s ,%d", z, zi)
-	}()
-
-	tt := lex.Tokens
-	t := tt[i]
-	switch t.Type {
-	case NumberToken:
-		num, err := strconv.ParseFloat(t.Str, 64)
-		if err != nil {
-			log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
-		}
-		return &Number{num}, i + 1
-	case VariableToken:
-		return &Variable{t.Str}, i + 1
-	case OpenToken:
-		a, j := ParseExpr(lex, i+1)
-		if lex.Tokens[j].Type != CloseToken {
-			log.Panicf("Expected close paren at position lex%d %d: %s", j, lex.Tokens[j].Pos, lex.Source)
-		}
-		return a, j + 1 // Skip over close paren.
-	}
-	log.Fatalf("BAD CASE %d", t.Type)
-	panic(0)
-}
-
 func ParseExpr(lex *Lex, i int) (z Expression, zi int) {
-	log.Printf("ParseExpr <<< %d", i)
+/*
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -154,15 +122,13 @@ func ParseExpr(lex *Lex, i int) (z Expression, zi int) {
 			debug.PrintStack()
 			panic(r)
 		}
-		log.Printf("ParseExpr >>> %s ,%d", z, zi)
 	}()
-
+*/
 	tt := lex.Tokens
 	var vec []Expression
 LOOP:
 	for {
 		t := tt[i]
-		log.Printf("ParseExpr LOOP %s ... %v ,%d", t, vec, i)
 		switch t.Type {
 		case EndToken, CloseToken:
 			break LOOP
@@ -176,19 +142,20 @@ LOOP:
 			default:
 				return &Dyad{&List{vec}, t.Str, b}, j
 			}
-		case NumberToken, VariableToken:
-			log.Printf("Hi")
-			b, j := ParseElement(lex, i)
-			vec = append(vec, b)
-			log.Printf("Got j=%d b=%s vec=%v", j, b, vec)
-			i = j
+		case NumberToken:
+			num, err := strconv.ParseFloat(t.Str, 64)
+			if err != nil {
+				log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
+			}
+			vec = append(vec, &Number{num})
+			i++
+		case VariableToken:
+			vec = append(vec, &Variable{t.Str})
+			i++
 		case OpenToken:
 			b, j := ParseExpr(lex, i+1)
-			log.Printf("case OpenToken: ParseExpr -> j=%d b=%s", j, b)
 			vec = append(vec, b)
-			log.Printf("case OpenToken: ... vec=%v", vec)
 			i = j + 1
-			log.Printf("case OpenToken: ... i=%d", i)
 		default:
 			log.Fatalf("bad default: %d", t.Type)
 		}
