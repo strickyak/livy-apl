@@ -143,7 +143,7 @@ func (o Subscript) Eval(c *Context) Val {
 	}
 
 	newSize := mulReduce(newShape)
-	newMat := &Mat{M:make([]Val, newSize), S: newShape}
+	newMat := &Mat{M: make([]Val, newSize), S: newShape}
 	if len(newShape) > 0 {
 		copyIntoSubscriptedMatrix(newShape, subscripts, 0, mat, mat.S, newMat.M, 0)
 	}
@@ -156,12 +156,12 @@ func copyIntoSubscriptedMatrix(shape []int, subscripts [][]int, subOffset int, m
 	}
 	if len(shape) == 1 {
 		for i := 0; i < shape[0]; i++ {
-			z[offset + i] = mat.M[subOffset + subscripts[0][i]]
+			z[offset+i] = mat.M[subOffset+subscripts[0][i]]
 		}
 	} else {
 		for i := 0; i < shape[0]; i++ {
-			nextOffset := offset + mulReduce(shape[1:]) * i
-			nextSubOffset := subOffset + mulReduce(matShape[1:]) * subscripts[0][i]
+			nextOffset := offset + mulReduce(shape[1:])*i
+			nextSubOffset := subOffset + mulReduce(matShape[1:])*subscripts[0][i]
 			copyIntoSubscriptedMatrix(shape[1:], subscripts[1:], nextSubOffset, mat, matShape[1:], z, nextOffset)
 		}
 	}
