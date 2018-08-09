@@ -159,22 +159,22 @@ func ParseExpr(lex *Lex, i int) (z Expression, zi int) {
 
 	tt := lex.Tokens
 	var vec []Expression
+LOOP:
 	for {
 		t := tt[i]
 		log.Printf("ParseExpr LOOP %s ... %v ,%d", t, vec, i)
 		switch t.Type {
 		case EndToken, CloseToken:
-			goto FINISH
+			break LOOP
 		case OperatorToken:
 			b, j := ParseExpr(lex, i+1)
-			if len(vec) > 0 {
-				if len(vec) > 1 {
-					return &Dyad{&List{vec}, t.Str, b}, j
-				} else if len(vec) == 1 {
-					return &Dyad{vec[0], t.Str, b}, j
-				}
-			} else {
+			switch len(vec) {
+			case 0:
 				return &Monad{t.Str, b}, j
+			case 1:
+					return &Dyad{vec[0], t.Str, b}, j
+			default:
+					return &Dyad{&List{vec}, t.Str, b}, j
 			}
 		case NumberToken, VariableToken:
 			log.Printf("Hi")
@@ -193,7 +193,7 @@ func ParseExpr(lex *Lex, i int) (z Expression, zi int) {
 			log.Fatalf("bad default: %d", t.Type)
 		}
 	}
-FINISH:
+
 	if len(vec) > 1 {
 		return &List{vec}, i
 	} else if len(vec) == 1 {
