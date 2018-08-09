@@ -114,16 +114,16 @@ func (o List) String() string {
 }
 
 func ParseExpr(lex *Lex, i int) (z Expression, zi int) {
-/*
-	defer func() {
-		r := recover()
-		if r != nil {
-			log.Printf("ParseExpr EXCEPTION %s >>> %s ,%d", r, z, zi)
-			debug.PrintStack()
-			panic(r)
-		}
-	}()
-*/
+	/*
+		defer func() {
+			r := recover()
+			if r != nil {
+				log.Printf("ParseExpr EXCEPTION %s >>> %s ,%d", r, z, zi)
+				debug.PrintStack()
+				panic(r)
+			}
+		}()
+	*/
 	tt := lex.Tokens
 	var vec []Expression
 LOOP:
@@ -163,8 +163,6 @@ LOOP:
 
 	if len(vec) > 1 {
 		return &List{vec}, i
-	} else if len(vec) == 1 {
-		return vec[0], i
 	}
-	panic(0)
+	return vec[0], i
 }
