@@ -172,9 +172,9 @@ LOOP:
 			case 0:
 				return &Monad{t.Str, b}, j
 			case 1:
-					return &Dyad{vec[0], t.Str, b}, j
+				return &Dyad{vec[0], t.Str, b}, j
 			default:
-					return &Dyad{&List{vec}, t.Str, b}, j
+				return &Dyad{&List{vec}, t.Str, b}, j
 			}
 		case NumberToken, VariableToken:
 			log.Printf("Hi")
