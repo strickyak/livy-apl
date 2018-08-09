@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-type test struct {
+type srcWantPair struct {
 	src  string
 	want string
 }
 
-var tests = []test{
+var parserTests = []srcWantPair{
 	{"+/ rho iota 8", "Monad(+/ Monad(rho Monad(iota (#8))))"},
 	{"+/ rho iota Pi", "Monad(+/ Monad(rho Monad(iota (Pi))))"},
 }
@@ -32,7 +32,7 @@ func Standard() *Context {
 }
 
 func TestMonadic(t *testing.T) {
-	for _, test := range tests {
+	for _, test := range parserTests {
 		lex := Tokenize(test.src)
 		expr, _ := ParseExpr(lex, 0)
 		log.Printf("EXPR: %s", expr)
@@ -97,29 +97,56 @@ func TestEvalLiteralList(t *testing.T) {
 	println("250 OK")
 }
 
-var evalTests = map[string]string{
-	"( 4 5 6 )":                  "[3 ]{4 5 6 } ",
-	"( 4 + 5 + 6 )":              "15 ",
-	"rho ( 4 + 5 + 6 )":          "[]{} ",
-	"( 1 + iota 4 ) rho 8":       "[1 2 3 4 ]{8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 } ",
-	"(3) 4 (5)":                  "[3 ]{3 4 5 } ",
-	"9 rho 9":                    "[9 ]{9 9 9 9 9 9 9 9 9 } ",
-	"3 3 rho rho 3 8 rho iota 9": "[3 3 ]{3 8 3 8 3 8 3 8 3 } ",
-	"A=3 3 rho square iota 10; A[ 1 2 ; 1 2 ]": "[2 2 ]{16 25 49 64 } ",
+var evalTests = []srcWantPair{
+	{"( 4 5 6 )",
+		"[3 ]{4 5 6 } "},
+
+	{"( 4 + 5 + 6 )",
+		"15 "},
+
+	{"rho ( 4 + 5 + 6 )",
+		"[]{} "},
+
+	{"( 1 + iota 4 ) rho 8",
+		"[1 2 3 4 ]{8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 } "},
+
+	{"(3) 4 (5)",
+		"[3 ]{3 4 5 } "},
+
+	{"9 rho 9",
+		"[9 ]{9 9 9 9 9 9 9 9 9 } "},
+
+	{"3 3 rho rho 3 8 rho iota 9",
+		"[3 3 ]{3 8 3 8 3 8 3 8 3 } "},
+
+	{"A=3 3 rho square iota 10; A[ 1 2 ; 1 2 ]",
+		"[2 2 ]{16 25 49 64 } "},
+
+	{"A=3 3 rho square iota 10; A[ 1 2 ; ]",
+		"[2 3 ]{9 16 25 36 49 64 } "},
+
+	{"A=3 3 rho square iota 10; A[ ; 1 2 ]",
+		"[3 2 ]{1 4 16 25 49 64 } "},
+
+	{"A=3 3 rho square iota 10; A[;]",
+		"[3 3 ]{0 1 4 9 16 25 36 49 64 } "},
+
+	{"A=3 3 rho square iota 10; A[2;2]",
+		"[1 1 ]{64 } "},
 }
 
 func TestEval(t *testing.T) {
-	for src, want := range evalTests {
-		log.Printf("TestEval <<< %q", src)
+	for _, p := range evalTests {
+		log.Printf("TestEval <<< %q", p.src)
 		c := Standard()
-		lex := Tokenize(src)
+		lex := Tokenize(p.src)
 		expr := ParseSeq(lex)
 		got := expr.Eval(c)
-		log.Printf("TestEval === %q", src)
+		log.Printf("TestEval === %q", p.src)
 		log.Printf("TestEval >>> %q", got)
 
-		if got.String() != want {
-			t.Errorf("Got %q, wanted %q, for src %q", got, want, src)
+		if got.String() != p.want {
+			t.Errorf("Got %q, wanted %q, for src %q", got, p.want, p.src)
 		}
 	}
 	println("250 OK")
