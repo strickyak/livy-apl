@@ -1,11 +1,21 @@
 package livy
 
+// “Should array indices start at 0 or 1?
+// My compromise of 0.5 was rejected without, I thought, proper consideration.”
+//      — Stan Kelly-Bootle
+//   — http://exple.tive.org/blarg/2013/10/22/citation-needed/
+
+// "So let us let our ordinals start at zero: ..."
+//   — Edsger W. Dijkstra
+
 import (
 	"fmt"
 	"log"
 	"runtime/debug"
 	"strconv"
 )
+
+const DefaultDim = -1
 
 var _ = debug.PrintStack
 
@@ -63,7 +73,7 @@ func (o Monad) Eval(c *Context) Val {
 	}
 	b := o.B.Eval(c)
 	log.Printf("Monad:Eval %s %s -> ?", o.Op, b)
-	z := fn(c, b)
+	z := fn(c, b, DefaultDim)
 	log.Printf("Monad:Eval %s %s -> %s", o.Op, b, z)
 	return z
 }
@@ -88,7 +98,7 @@ func (o Dyad) Eval(c *Context) Val {
 	a := o.A.Eval(c)
 	b := o.B.Eval(c)
 	log.Printf("Dyad:Eval %s %s %s -> ?", a, o.Op, b)
-	z := fn(c, a, b)
+	z := fn(c, a, b, DefaultDim)
 	log.Printf("Dyad:Eval %s %s %s -> %s", a, o.Op, b, z)
 	return z
 }
@@ -148,6 +158,52 @@ func (o Subscript) Eval(c *Context) Val {
 		copyIntoSubscriptedMatrix(newShape, subscripts, 0, mat, mat.S, newMat.M, 0)
 	}
 	return newMat
+}
+func (o Subscript) Assign(c *Context, a Val) Val {
+	v := o.Var.Eval(c)
+	mat, ok := v.(*Mat)
+	if !ok {
+		log.Panicf("Cannot subscript non-matrix: %s", v)
+	}
+
+	rank := len(mat.S)
+	if len(o.Vec) != rank {
+		log.Panicf("Number of subscripts %d does not match rank %d of matrix: %s", len(o.Vec), rank, v)
+	}
+
+	// Replace mat with a copy, that can be modified.
+	matM := make([]Val, len(mat.M)) // Alloc new contents.
+	copy(matM, mat.M)               // Copy the contents.
+	mat = &Mat{matM, mat.S}         // New mat with new contents.  Shape is immutable and can be shared.
+
+	var newShape []int
+	var subscripts [][]int
+	for i, sub := range o.Vec {
+		if sub == nil {
+			// For missing subscripts, use entire range available in mat's shape.
+			subscripts = append(subscripts, intRange(mat.S[i]))
+			newShape = append(newShape, mat.S[i])
+		} else {
+			r := sub.Eval(c).Ravel()
+			newShape = append(newShape, len(r))
+			ints := make([]int, len(r))
+			for i, e := range r {
+				ints[i] = e.GetScalarInt()
+			}
+			subscripts = append(subscripts, ints)
+		}
+	}
+
+	// TODO zzzzzzzzzzzzzzzzz TODO
+
+	/*
+		newSize := mulReduce(newShape) // Now this is the size of a, that we assign from.
+		newMat := &Mat{M: make([]Val, newSize), S: newShape}
+		if len(newShape) > 0 {
+			copyIntoSubscriptedMatrix(newShape, subscripts, 0, mat, mat.S, newMat.M, 0)
+		}
+	*/
+	return a
 }
 
 func copyIntoSubscriptedMatrix(shape []int, subscripts [][]int, subOffset int, mat *Mat, matShape []int, z []Val, offset int) {

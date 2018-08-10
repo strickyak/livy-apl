@@ -5,7 +5,7 @@ import (
 	"math"
 )
 
-type DyadicFunc func(*Context, Val, Val) Val
+type DyadicFunc func(c *Context, a Val, b Val, dim int) Val
 
 var StandardDyadics = map[string]DyadicFunc{
 	"rho": dyadicRho,
@@ -51,7 +51,7 @@ func asMat(a Val) *Mat {
 	return mat
 }
 
-func dyadicRho(c *Context, a Val, b Val) Val {
+func dyadicRho(c *Context, a Val, b Val, dim int) Val {
 	var shape []int
 
 	am := asMat(a)
@@ -91,20 +91,19 @@ func recursiveFill(shape []int, source []Val, vec []Val, i int) ([]Val, int) {
 	return vec, i
 }
 
-type FFB func(float64, float64) bool
-type FFF func(float64, float64) float64
-type VVV func(Val, Val) Val
+type FuncFloatFloatBool func(float64, float64) bool
+type FuncFloatFloatFloat func(float64, float64) float64
 
-func WrapFloatDyadic(fn FFF) VVV {
-	return func(a, b Val) Val {
+func WrapFloatDyadic(fn FuncFloatFloatFloat) DyadicFunc {
+	return func(c *Context, a, b Val, dim int) Val {
 		x := a.GetScalarFloat()
 		y := b.GetScalarFloat()
 		return &Num{fn(x, y)}
 	}
 }
 
-func WrapFloatBoolDyadic(fn FFB) VVV {
-	return func(a, b Val) Val {
+func WrapFloatBoolDyadic(fn FuncFloatFloatBool) DyadicFunc {
+	return func(c *Context, a, b Val, dim int) Val {
 		x := a.GetScalarFloat()
 		y := b.GetScalarFloat()
 		if fn(x, y) {
@@ -130,8 +129,8 @@ func SameShape(a, b *Mat) bool {
 	return true
 }
 
-func WrapMatMatDyadic(fn VVV) DyadicFunc {
-	return func(c *Context, a, b Val) Val {
+func WrapMatMatDyadic(fn DyadicFunc) DyadicFunc {
+	return func(c *Context, a, b Val, dim int) Val {
 		switch x := a.(type) {
 		case *Mat:
 			switch y := b.(type) {
@@ -151,7 +150,7 @@ func WrapMatMatDyadic(fn VVV) DyadicFunc {
 						if y1 == nil {
 							log.Panicf("RHS not a scalar at matrix offset %d: %s", i, y1)
 						}
-						vec[i] = fn(x1, y1)
+						vec[i] = fn(c, x1, y1, dim)
 					}
 
 					return &Mat{M: vec, S: x.S}
@@ -167,7 +166,7 @@ func WrapMatMatDyadic(fn VVV) DyadicFunc {
 					if x1 == nil {
 						log.Panicf("LHS not a scalar at matrix offset %d: %s", i, x1)
 					}
-					vec[i] = fn(x1, ys)
+					vec[i] = fn(c, x1, ys, dim)
 				}
 
 				return &Mat{M: vec, S: x.S}
@@ -192,7 +191,7 @@ func WrapMatMatDyadic(fn VVV) DyadicFunc {
 					if y1 == nil {
 						log.Panicf("RHS not a scalar at matrix offset %d: %s", i, y1)
 					}
-					vec[i] = fn(xs, y1)
+					vec[i] = fn(c, xs, y1, dim)
 				}
 
 				return &Mat{M: vec, S: y.S}
@@ -203,6 +202,6 @@ func WrapMatMatDyadic(fn VVV) DyadicFunc {
 		if ys == nil {
 			log.Panicf("RHS neither matrix nor scalar: %s", b)
 		}
-		return fn(xs, ys)
+		return fn(c, xs, ys, dim)
 	}
 }

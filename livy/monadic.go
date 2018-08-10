@@ -5,9 +5,11 @@ import (
 	"math"
 )
 
-type MonadicFunc func(*Context, Val) Val
+type MonadicFunc func(c *Context, b Val, dim int) Val
 
 var StandardMonadics = map[string]MonadicFunc{
+	"iota": iotaMonadic,
+	"rho":  rhoMonadic,
 	"asin": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Asin(b)
 	})),
@@ -71,15 +73,12 @@ var StandardMonadics = map[string]MonadicFunc{
 	"square": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return b * b
 	})),
-	"iota": iotaMonadic,
-	"rho":  rhoMonadic,
 }
 
-type FF func(float64) float64
-type VV func(Val) Val
+type funcFloatFloat func(b float64) float64
 
-func WrapFloatMonadic(fn FF) VV {
-	return func(b Val) Val {
+func WrapFloatMonadic(fn funcFloatFloat) MonadicFunc {
+	return func(c *Context, b Val, dim int) Val {
 		y := b.GetScalarFloat()
 		return &Num{fn(y)}
 	}
@@ -94,7 +93,7 @@ func doubleMonadic(c *Context, b Val) Val {
 	return nil
 }
 
-func iotaMonadic(c *Context, b Val) Val {
+func iotaMonadic(c *Context, b Val, dim int) Val {
 	n := b.GetScalarInt()
 	vec := make([]Val, n)
 	for i := 0; i < n; i++ {
@@ -105,7 +104,7 @@ func iotaMonadic(c *Context, b Val) Val {
 		S: []int{n},
 	}
 }
-func rhoMonadic(c *Context, b Val) Val {
+func rhoMonadic(c *Context, b Val, dim int) Val {
 	switch y := b.(type) {
 	case *Mat:
 		n := len(y.S)
@@ -125,8 +124,8 @@ func rhoMonadic(c *Context, b Val) Val {
 	}
 }
 
-func WrapMatMonadic(fn VV) MonadicFunc {
-	return func(c *Context, b Val) Val {
+func WrapMatMonadic(fn MonadicFunc) MonadicFunc {
+	return func(c *Context, b Val, dim int) Val {
 		switch y := b.(type) {
 		case *Mat:
 			n := len(y.M)
@@ -137,7 +136,7 @@ func WrapMatMonadic(fn VV) MonadicFunc {
 				if y1 == nil {
 					log.Panicf("arg not a scalar at matrix offset %d: %s", i, y1)
 				}
-				vec[i] = fn(y1)
+				vec[i] = fn(c, y1, dim)
 			}
 
 			return &Mat{M: vec, S: y.S}
@@ -148,6 +147,6 @@ func WrapMatMonadic(fn VV) MonadicFunc {
 		if ys == nil {
 			log.Panicf("arg not scalar or matrix")
 		}
-		return fn(ys)
+		return fn(c, ys, dim)
 	}
 }
