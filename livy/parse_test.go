@@ -133,6 +133,9 @@ var evalTests = []srcWantPair{
 
 	{"A=3 3 rho square iota 10; A[2;2]",
 		"[1 1 ]{64 } "},
+
+	{"+/ 888 + iota 1",
+		"888 "},
 }
 
 func TestEval(t *testing.T) {

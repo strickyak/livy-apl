@@ -39,6 +39,110 @@ var StandardDyadics = map[string]DyadicFunc{
 		func(a, b float64) float64 { return math.Mod(a, b) })),
 }
 
+var Zero = &Num{0.0}
+var One = &Num{1.0}
+var ReduceWithIdentity = map[string]Val{
+	"+":   Zero,
+	"-":   Zero,
+	"or":  Zero,
+	"!=":  Zero,
+	"<":   Zero,
+	">":   Zero,
+	"*":   One,
+	"/":   One,
+	"**":  One,
+	"and": One,
+	"==":  One,
+	">=":  One,
+	"<=":  One,
+}
+
+func init() {
+	for name, identity := range ReduceWithIdentity {
+		fn, ok := StandardDyadics[name]
+		if ok {
+			scanName := name + "/"
+			StandardMonadics[scanName] = mkReduceOp(scanName, fn, identity)
+		}
+	}
+}
+
+func mkReduceOp(name string, fn DyadicFunc, identity Val) MonadicFunc {
+	return func(c *Context, a Val, dim int) Val {
+		mat, ok := a.(*Mat)
+		if !ok {
+			log.Panicf("Cannot %s/ reduce on non-matrix: %s", name, a)
+		}
+		oldRank := len(mat.S)
+		oldShape := mat.S
+		if oldRank == 0 {
+			log.Panicf("Cannot %s/ reduce on scalar: %s", name, mat)
+		}
+		if dim < 0 {
+			dim += oldRank
+		}
+		if dim < 0 || dim > oldRank-1 {
+			log.Panicf("Scan dimension [%d] is bad for %s/ reduce of rank %d", dim, name, oldRank)
+		}
+
+		var newShape []int
+		for i := 0; i < oldRank; i++ {
+			if i == dim {
+				// Skip
+			} else {
+				newShape = append(newShape, oldShape[i])
+			}
+		}
+
+		vecLen := mulReduce(newShape)
+		vec := make([]Val, vecLen)
+
+		// reduceTarget := mulReduce(oldShape[:dim])
+		reduceStride, reduceLen := mulReduce(oldShape[dim+1:]), oldShape[dim]
+		revdim := oldRank - dim
+
+		var reduce func(oldShape []int, oldVec []Val, oldOffset int, newShape []int, newVec []Val, newOffset int)
+		reduce = func(oldShape []int, oldVec []Val, oldOffset int, newShape []int, newVec []Val, newOffset int) {
+			oldRank := len(oldShape)
+			if oldRank == 0 {
+				var reduction Val
+				if reduceLen == 0 {
+					reduction = identity
+				} else if reduceLen == 1 {
+					reduction = oldVec[oldOffset]
+				} else if reduceLen > 0 {
+					var reduction Val = oldVec[oldOffset]
+					for j := 1; j < reduceLen; j++ {
+						reduction = fn(c, reduction, oldVec[oldOffset+j*reduceStride], DefaultDim)
+					}
+				}
+				newVec[newOffset] = reduction
+			} else if len(oldShape) == revdim {
+				// This is the old dimension we reduce.
+				// It exists in the oldShape but not in the newShape.
+				for i := 0; i < oldShape[0]; i++ {
+					oldStride := mulReduce(oldShape[1:])
+					// newStride := mulReduce(newShape[1:])
+					reduce(oldShape[1:], oldVec, oldOffset+i*oldStride, newShape, newVec, newOffset)
+				}
+			} else {
+				for i := 0; i < oldShape[0]; i++ {
+					oldStride := mulReduce(oldShape[1:])
+					newStride := mulReduce(newShape[1:])
+					reduce(oldShape[1:], oldVec, oldOffset+i*oldStride, newShape[1:], newVec, newOffset+i*newStride)
+				}
+			}
+		}
+
+		reduce(mat.S, mat.M, 0, newShape, vec, 0)
+		if len(newShape) == 0 {
+			return vec[0]
+		} else {
+			return &Mat{vec, newShape}
+		}
+	}
+}
+
 func asMat(a Val) *Mat {
 	mat, ok := a.(*Mat)
 	if !ok {
