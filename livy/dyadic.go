@@ -94,15 +94,16 @@ func mkReduceOp(name string, fn DyadicFunc, identity Val) MonadicFunc {
 			}
 		}
 
-		vecLen := mulReduce(newShape)
-		vec := make([]Val, vecLen)
+		newVecLen := mulReduce(newShape)
+		newVec := make([]Val, newVecLen)
+		oldVec := mat.M
 
 		// reduceTarget := mulReduce(oldShape[:dim])
 		reduceStride, reduceLen := mulReduce(oldShape[dim+1:]), oldShape[dim]
 		revdim := oldRank - dim
 
-		var reduce func(oldShape []int, oldVec []Val, oldOffset int, newShape []int, newVec []Val, newOffset int)
-		reduce = func(oldShape []int, oldVec []Val, oldOffset int, newShape []int, newVec []Val, newOffset int) {
+		var reduce func(oldShape []int, oldOffset int, newShape []int, newOffset int)
+		reduce = func(oldShape []int, oldOffset int, newShape []int, newOffset int) {
 			oldRank := len(oldShape)
 			if oldRank == 0 {
 				var reduction Val
@@ -123,22 +124,22 @@ func mkReduceOp(name string, fn DyadicFunc, identity Val) MonadicFunc {
 				for i := 0; i < oldShape[0]; i++ {
 					oldStride := mulReduce(oldShape[1:])
 					// newStride := mulReduce(newShape[1:])
-					reduce(oldShape[1:], oldVec, oldOffset+i*oldStride, newShape, newVec, newOffset)
+					reduce(oldShape[1:], oldOffset+i*oldStride, newShape, newOffset)
 				}
 			} else {
 				for i := 0; i < oldShape[0]; i++ {
 					oldStride := mulReduce(oldShape[1:])
 					newStride := mulReduce(newShape[1:])
-					reduce(oldShape[1:], oldVec, oldOffset+i*oldStride, newShape[1:], newVec, newOffset+i*newStride)
+					reduce(oldShape[1:], oldOffset+i*oldStride, newShape[1:], newOffset+i*newStride)
 				}
 			}
 		}
 
-		reduce(mat.S, mat.M, 0, newShape, vec, 0)
+		reduce(mat.S, 0, newShape, 0)
 		if len(newShape) == 0 {
-			return vec[0]
+			return newVec[0]
 		} else {
-			return &Mat{vec, newShape}
+			return &Mat{newVec, newShape}
 		}
 	}
 }
