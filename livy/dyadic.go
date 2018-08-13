@@ -82,7 +82,7 @@ func mkReduceOp(name string, fn DyadicFunc, identity Val) MonadicFunc {
 			dim += oldRank
 		}
 		if dim < 0 || dim > oldRank-1 {
-			log.Panicf("Scan dimension [%d] is bad for %s/ reduce of rank %d", dim, name, oldRank)
+			log.Panicf("Reduce dimension [%d] is bad for %s/ reduce of rank %d", dim, name, oldRank)
 		}
 
 		var newShape []int
@@ -100,42 +100,47 @@ func mkReduceOp(name string, fn DyadicFunc, identity Val) MonadicFunc {
 
 		// reduceTarget := mulReduce(oldShape[:dim])
 		reduceStride, reduceLen := mulReduce(oldShape[dim+1:]), oldShape[dim]
+		log.Printf("Reduce Stride = %d", reduceStride)
 		revdim := oldRank - dim
 
-		var reduce func(oldShape []int, oldOffset int, newShape []int, newOffset int)
-		reduce = func(oldShape []int, oldOffset int, newShape []int, newOffset int) {
-			oldRank := len(oldShape)
-			if oldRank == 0 {
+		var reduce func(oldShape []int, oldOffset int, newShape []int, newOffset int, reduceOffset int)
+		reduce = func(oldShape []int, oldOffset int, newShape []int, newOffset int, reduceOffset int) {
+			rank := len(oldShape)
+			log.Printf("[[%d]] ;; old %d @ %v ;; new %d @ %v ;; {ro=%d,rs=%d,revdim=%d}", rank, oldOffset, oldShape, newOffset, newShape, reduceOffset, reduceStride, revdim)
+			if rank == 0 {
 				var reduction Val
 				if reduceLen == 0 {
 					reduction = identity
 				} else if reduceLen == 1 {
 					reduction = oldVec[oldOffset]
 				} else if reduceLen > 0 {
-					var reduction Val = oldVec[oldOffset]
+					reduction = oldVec[oldOffset]
 					for j := 1; j < reduceLen; j++ {
+						log.Printf("...... %d [[%d; %s]]", j, newOffset, reduction)
 						reduction = fn(c, reduction, oldVec[oldOffset+j*reduceStride], DefaultDim)
 					}
 				}
 				newVec[newOffset] = reduction
+				log.Printf("...... newVec: %v [[%d; %s]]", newVec, newOffset, reduction)
 			} else if len(oldShape) == revdim {
 				// This is the old dimension we reduce.
 				// It exists in the oldShape but not in the newShape.
-				for i := 0; i < oldShape[0]; i++ {
-					oldStride := mulReduce(oldShape[1:])
-					// newStride := mulReduce(newShape[1:])
-					reduce(oldShape[1:], oldOffset+i*oldStride, newShape, newOffset)
+				// We do not iterate i here -- that will happen above when rank==0.
+				if reduceStride != mulReduce(oldShape[1:]) {
+					panic(0)
 				}
+				log.Printf("111 reduceOffset = %d ;; old %d @ %v ;; new %d @ %v -->", oldOffset, reduceOffset, oldShape, newOffset, newShape)
+				reduce(oldShape[1:], oldOffset, newShape, newOffset, oldOffset)
 			} else {
 				for i := 0; i < oldShape[0]; i++ {
 					oldStride := mulReduce(oldShape[1:])
 					newStride := mulReduce(newShape[1:])
-					reduce(oldShape[1:], oldOffset+i*oldStride, newShape[1:], newOffset+i*newStride)
+					reduce(oldShape[1:], oldOffset+i*oldStride, newShape[1:], newOffset+i*newStride, reduceOffset)
 				}
 			}
 		}
 
-		reduce(mat.S, 0, newShape, 0)
+		reduce(oldShape, 0 /*oldOffset*/, newShape, 0 /*newOffset*/, -1000000000 /* reduceOffset: cause panic if used in any reasonable test */)
 		if len(newShape) == 0 {
 			return newVec[0]
 		} else {
