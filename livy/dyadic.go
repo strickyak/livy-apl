@@ -29,7 +29,7 @@ var StandardDyadics = map[string]DyadicFunc{
 		func(a, b float64) float64 { return a - b })),
 	"*": WrapMatMatDyadic(WrapFloatDyadic(
 		func(a, b float64) float64 { return a * b })),
-	"/": WrapMatMatDyadic(WrapFloatDyadic(
+	"div": WrapMatMatDyadic(WrapFloatDyadic(
 		func(a, b float64) float64 { return a / b })),
 	"**": WrapMatMatDyadic(WrapFloatDyadic(
 		func(a, b float64) float64 { return math.Pow(a, b) })),
@@ -41,7 +41,7 @@ var StandardDyadics = map[string]DyadicFunc{
 
 var Zero = &Num{0.0}
 var One = &Num{1.0}
-var ReduceWithIdentity = map[string]Val{
+var ScanAndReduceWithIdentity = map[string]Val{
 	"+":   Zero,
 	"-":   Zero,
 	"or":  Zero,
@@ -49,7 +49,7 @@ var ReduceWithIdentity = map[string]Val{
 	"<":   Zero,
 	">":   Zero,
 	"*":   One,
-	"/":   One,
+	"div": One,
 	"**":  One,
 	"and": One,
 	"==":  One,
@@ -58,37 +58,45 @@ var ReduceWithIdentity = map[string]Val{
 }
 
 func init() {
-	for name, identity := range ReduceWithIdentity {
+	for name, identity := range ScanAndReduceWithIdentity {
 		fn, ok := StandardDyadics[name]
 		if ok {
-			scanName := name + "/"
-			StandardMonadics[scanName] = mkReduceOp(scanName, fn, identity)
+			reduceName := name + `/`
+			StandardMonadics[reduceName] = MkReduceOrScanOp(reduceName, fn, identity, false)
+			scanName := name + `\`
+			StandardMonadics[scanName] = MkReduceOrScanOp(scanName, fn, identity, true)
 		}
 	}
 }
 
-func mkReduceOp(name string, fn DyadicFunc, identity Val) MonadicFunc {
+func MkReduceOrScanOp(name string, fn DyadicFunc, identity Val, toScan bool) MonadicFunc {
+	verb := "reduce"
+	if toScan {
+		verb = "scan"
+	}
 	return func(c *Context, a Val, dim int) Val {
 		mat, ok := a.(*Mat)
 		if !ok {
-			log.Panicf("Cannot %s/ reduce on non-matrix: %s", name, a)
+			log.Panicf("Cannot %s %s on non-matrix: %s", name, verb, a)
 		}
 		oldRank := len(mat.S)
 		oldShape := mat.S
 		if oldRank == 0 {
-			log.Panicf("Cannot %s/ reduce on scalar: %s", name, mat)
+			log.Panicf("Cannot %s %s on scalar: %s", name, verb, mat)
 		}
 		if dim < 0 {
 			dim += oldRank
 		}
 		if dim < 0 || dim > oldRank-1 {
-			log.Panicf("Reduce dimension [%d] is bad for %s/ reduce of rank %d", dim, name, oldRank)
+			log.Panicf("Reduce dimension [%d] is bad for %s %s of rank %d", dim, name, verb, oldRank)
 		}
 
 		var newShape []int
 		for i := 0; i < oldRank; i++ {
 			if i == dim {
-				// Skip
+				if toScan {
+					newShape = append(newShape, oldShape[i])
+				}
 			} else {
 				newShape = append(newShape, oldShape[i])
 			}
@@ -109,25 +117,40 @@ func mkReduceOp(name string, fn DyadicFunc, identity Val) MonadicFunc {
 			log.Printf("[[%d]] ;; old %d @ %v ;; new %d @ %v ;; {ro=%d,rs=%d,revdim=%d}", rank, oldOffset, oldShape, newOffset, newShape, reduceOffset, reduceStride, revdim)
 			if rank == 0 {
 				var reduction Val
+
 				if reduceLen == 0 {
 					reduction = identity
-				} else if reduceLen == 1 {
+				} else {
+					// j is 0:
 					reduction = oldVec[oldOffset]
-				} else if reduceLen > 0 {
-					reduction = oldVec[oldOffset]
+					if toScan {
+						newVec[newOffset] = reduction
+						log.Printf("Scan...0  newVec: %v [[%d; %s]]", newVec, newOffset, reduction)
+					}
+					// other j's:
 					for j := 1; j < reduceLen; j++ {
 						log.Printf("...... %d [[%d; %s]]", j, newOffset, reduction)
 						reduction = fn(c, reduction, oldVec[oldOffset+j*reduceStride], DefaultDim)
+						if toScan {
+							newVec[newOffset+j*reduceStride] = reduction
+							log.Printf("Scan...%d  newVec: %v [[%d; %s]]", j, newVec, newOffset+j*reduceStride, reduction)
+						}
 					}
 				}
-				newVec[newOffset] = reduction
-				log.Printf("...... newVec: %v [[%d; %s]]", newVec, newOffset, reduction)
+
+				if !toScan {
+					newVec[newOffset] = reduction
+					log.Printf("Reduction...  newVec: %v [[%d; %s]]", newVec, newOffset, reduction)
+				}
 			} else if len(oldShape) == revdim {
 				// This is the old dimension we reduce.
-				// It exists in the oldShape but not in the newShape.
+				// It exists in the oldShape but not in the newShape, if reducing.
 				// We do not iterate i here -- that will happen above when rank==0.
 				if reduceStride != mulReduce(oldShape[1:]) {
 					panic(0)
+				}
+				if toScan {
+					newShape = newShape[1:]
 				}
 				log.Printf("111 reduceOffset = %d ;; old %d @ %v ;; new %d @ %v -->", oldOffset, reduceOffset, oldShape, newOffset, newShape)
 				reduce(oldShape[1:], oldOffset, newShape, newOffset, oldOffset)

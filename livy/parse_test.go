@@ -142,6 +142,24 @@ var evalTests = []srcWantPair{
 
 	{"+/ 3 3 3 rho 1 + iota 100",
 		"[3 3 ]{6 15 24 33 42 51 60 69 78 } "},
+
+	{`+\ iota 10`,
+		"[10 ]{0 1 3 6 10 15 21 28 36 45 } "},
+
+	{`*\ 3 rho 8`,
+		"[3 ]{8 64 512 } "},
+
+	{`+/ 8 + iota 1`,
+		"8 "},
+
+	{`+/ 8 + iota 0`,
+		"0 "},
+
+	{`+\ 8 + iota 1`,
+		"[1 ]{8 } "},
+
+	{`+\ 8 + iota 0`,
+		"[0 ]{} "},
 }
 
 func TestEval(t *testing.T) {
@@ -152,7 +170,7 @@ func TestEval(t *testing.T) {
 		expr := ParseSeq(lex)
 		got := expr.Eval(c)
 		log.Printf("TestEval === %q", p.src)
-		log.Printf("TestEval >>> %q", got)
+		log.Printf("TestEval >>> %v", got)
 
 		if got.String() != p.want {
 			t.Errorf("Got %q, wanted %q, for src %q", got, p.want, p.src)
