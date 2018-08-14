@@ -160,6 +160,12 @@ var evalTests = []srcWantPair{
 
 	{`+\ 8 + iota 0`,
 		"[0 ]{} "},
+
+	{`+/[0]  3 3 3 rho  iota 100`,
+		"[3 3 ]{27 30 33 36 39 42 45 48 51 } "},
+
+	{`+/[1]  3 3 3 rho  iota 100`,
+		"[3 3 ]{9 12 15 36 39 42 63 66 69 } "},
 }
 
 func TestEval(t *testing.T) {
