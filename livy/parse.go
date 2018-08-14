@@ -15,7 +15,7 @@ import (
 	"strconv"
 )
 
-const DefaultDim = -1
+const DefaultAxis = -1
 
 var _ = debug.PrintStack
 
@@ -33,14 +33,16 @@ type Number struct {
 }
 
 type Monad struct {
-	Op string
-	B  Expression
+	Op   string
+	B    Expression
+	Axis Expression
 }
 
 type Dyad struct {
-	A  Expression
-	Op string
-	B  Expression
+	A    Expression
+	Op   string
+	B    Expression
+	Axis Expression
 }
 
 type List struct {
@@ -73,7 +75,11 @@ func (o Monad) Eval(c *Context) Val {
 	}
 	b := o.B.Eval(c)
 	log.Printf("Monad:Eval %s %s -> ?", o.Op, b)
-	z := fn(c, b, DefaultDim)
+	axis := DefaultAxis
+	if o.Axis != nil {
+		axis = o.Axis.Eval(c).GetScalarInt()
+	}
+	z := fn(c, b, axis)
 	log.Printf("Monad:Eval %s %s -> %s", o.Op, b, z)
 	return z
 }
@@ -96,9 +102,13 @@ func (o Dyad) Eval(c *Context) Val {
 		log.Panicf("No such dyadaic operator %q", o.Op)
 	}
 	a := o.A.Eval(c)
+	axis := DefaultAxis
+	if o.Axis != nil {
+		axis = o.Axis.Eval(c).GetScalarInt()
+	}
 	b := o.B.Eval(c)
 	log.Printf("Dyad:Eval %s %s %s -> ?", a, o.Op, b)
-	z := fn(c, a, b, DefaultDim)
+	z := fn(c, a, b, axis)
 	log.Printf("Dyad:Eval %s %s %s -> %s", a, o.Op, b, z)
 	return z
 }
@@ -248,11 +258,19 @@ func (o Number) String() string {
 }
 
 func (o Monad) String() string {
-	return fmt.Sprintf("Monad(%s %s)", o.Op, o.B)
+	sub := ""
+	if o.Axis != nil {
+		sub = fmt.Sprintf("[%d]", o.Axis)
+	}
+	return fmt.Sprintf("Monad(%s%s %s)", o.Op, sub, o.B)
 }
 
 func (o Dyad) String() string {
-	return fmt.Sprintf("Dyad(%s %s %s)", o.A, o.Op, o.B)
+	sub := ""
+	if o.Axis != nil {
+		sub = fmt.Sprintf("[%d]", o.Axis)
+	}
+	return fmt.Sprintf("Dyad(%s %s%s %s)", o.A, o.Op, sub, o.B)
 }
 
 func (o List) String() string {
@@ -326,14 +344,26 @@ LOOP:
 		case BraToken:
 			log.Panicf("Unexpected `[` at position %d: %s", t.Pos, lex.Source)
 		case OperatorToken:
+			axis := Expression(nil)
+			var j int
+			if tt[i+1].Type == BraToken {
+				log.Printf("Axis1")
+				axis, j = ParseExpr(lex, i+2)
+				log.Printf("Axis2 %d %s", j, axis)
+				if tt[j].Type != KetToken {
+					log.Panicf("Expected ']' but got %q after subscript", tt[i].Str)
+				}
+				i = j // Don't add 1 here; ParseExpr just below gets i+1.
+			}
+
 			b, j := ParseExpr(lex, i+1)
 			switch len(vec) {
 			case 0:
-				return &Monad{t.Str, b}, j
+				return &Monad{t.Str, b, axis}, j
 			case 1:
-				return &Dyad{vec[0], t.Str, b}, j
+				return &Dyad{vec[0], t.Str, b, axis}, j
 			default:
-				return &Dyad{&List{vec}, t.Str, b}, j
+				return &Dyad{&List{vec}, t.Str, b, axis}, j
 			}
 		case NumberToken:
 			num, err := strconv.ParseFloat(t.Str, 64)
@@ -367,5 +397,6 @@ LOOP:
 	if len(vec) > 1 {
 		return &List{vec}, i
 	}
+	log.Printf("VEC=%v", vec)
 	return vec[0], i
 }

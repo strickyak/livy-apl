@@ -78,7 +78,7 @@ var StandardMonadics = map[string]MonadicFunc{
 type funcFloatFloat func(b float64) float64
 
 func WrapFloatMonadic(fn funcFloatFloat) MonadicFunc {
-	return func(c *Context, b Val, dim int) Val {
+	return func(c *Context, b Val, axis int) Val {
 		y := b.GetScalarFloat()
 		return &Num{fn(y)}
 	}
@@ -93,7 +93,7 @@ func doubleMonadic(c *Context, b Val) Val {
 	return nil
 }
 
-func iotaMonadic(c *Context, b Val, dim int) Val {
+func iotaMonadic(c *Context, b Val, axis int) Val {
 	n := b.GetScalarInt()
 	vec := make([]Val, n)
 	for i := 0; i < n; i++ {
@@ -104,7 +104,7 @@ func iotaMonadic(c *Context, b Val, dim int) Val {
 		S: []int{n},
 	}
 }
-func rhoMonadic(c *Context, b Val, dim int) Val {
+func rhoMonadic(c *Context, b Val, axis int) Val {
 	switch y := b.(type) {
 	case *Mat:
 		n := len(y.S)
@@ -125,7 +125,7 @@ func rhoMonadic(c *Context, b Val, dim int) Val {
 }
 
 func WrapMatMonadic(fn MonadicFunc) MonadicFunc {
-	return func(c *Context, b Val, dim int) Val {
+	return func(c *Context, b Val, axis int) Val {
 		switch y := b.(type) {
 		case *Mat:
 			n := len(y.M)
@@ -136,7 +136,7 @@ func WrapMatMonadic(fn MonadicFunc) MonadicFunc {
 				if y1 == nil {
 					log.Panicf("arg not a scalar at matrix offset %d: %s", i, y1)
 				}
-				vec[i] = fn(c, y1, dim)
+				vec[i] = fn(c, y1, axis)
 			}
 
 			return &Mat{M: vec, S: y.S}
@@ -147,6 +147,6 @@ func WrapMatMonadic(fn MonadicFunc) MonadicFunc {
 		if ys == nil {
 			log.Panicf("arg not scalar or matrix")
 		}
-		return fn(c, ys, dim)
+		return fn(c, ys, axis)
 	}
 }

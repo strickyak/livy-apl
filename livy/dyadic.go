@@ -5,7 +5,7 @@ import (
 	"math"
 )
 
-type DyadicFunc func(c *Context, a Val, b Val, dim int) Val
+type DyadicFunc func(c *Context, a Val, b Val, axis int) Val
 
 var StandardDyadics = map[string]DyadicFunc{
 	"rho": dyadicRho,
@@ -74,26 +74,27 @@ func MkReduceOrScanOp(name string, fn DyadicFunc, identity Val, toScan bool) Mon
 	if toScan {
 		verb = "scan"
 	}
-	return func(c *Context, a Val, dim int) Val {
+	return func(c *Context, a Val, axis int) Val {
 		mat, ok := a.(*Mat)
 		if !ok {
 			log.Panicf("Cannot %s %s on non-matrix: %s", name, verb, a)
 		}
 		oldRank := len(mat.S)
 		oldShape := mat.S
+		log.Printf("oldShape %v oldRank %v for matrix %v", oldShape, oldRank, mat)
 		if oldRank == 0 {
 			log.Panicf("Cannot %s %s on scalar: %s", name, verb, mat)
 		}
-		if dim < 0 {
-			dim += oldRank
+		if axis < 0 {
+			axis += oldRank
 		}
-		if dim < 0 || dim > oldRank-1 {
-			log.Panicf("Reduce dimension [%d] is bad for %s %s of rank %d", dim, name, verb, oldRank)
+		if axis < 0 || axis > oldRank-1 {
+			log.Panicf("Reduce axis [%d] is bad for %s %s of rank %d", axis, name, verb, oldRank)
 		}
 
 		var newShape []int
 		for i := 0; i < oldRank; i++ {
-			if i == dim {
+			if i == axis {
 				if toScan {
 					newShape = append(newShape, oldShape[i])
 				}
@@ -106,15 +107,14 @@ func MkReduceOrScanOp(name string, fn DyadicFunc, identity Val, toScan bool) Mon
 		newVec := make([]Val, newVecLen)
 		oldVec := mat.M
 
-		// reduceTarget := mulReduce(oldShape[:dim])
-		reduceStride, reduceLen := mulReduce(oldShape[dim+1:]), oldShape[dim]
+		reduceStride, reduceLen := mulReduce(oldShape[axis+1:]), oldShape[axis]
 		log.Printf("Reduce Stride = %d", reduceStride)
-		revdim := oldRank - dim
+		revAxis := oldRank - axis
 
 		var reduce func(oldShape []int, oldOffset int, newShape []int, newOffset int, reduceOffset int)
 		reduce = func(oldShape []int, oldOffset int, newShape []int, newOffset int, reduceOffset int) {
 			rank := len(oldShape)
-			log.Printf("[[%d]] ;; old %d @ %v ;; new %d @ %v ;; {ro=%d,rs=%d,revdim=%d}", rank, oldOffset, oldShape, newOffset, newShape, reduceOffset, reduceStride, revdim)
+			log.Printf("[[%d]] ;; old %d @ %v ;; new %d @ %v ;; {ro=%d,rs=%d,revAxis=%d}", rank, oldOffset, oldShape, newOffset, newShape, reduceOffset, reduceStride, revAxis)
 			if rank == 0 {
 				var reduction Val
 
@@ -130,7 +130,7 @@ func MkReduceOrScanOp(name string, fn DyadicFunc, identity Val, toScan bool) Mon
 					// other j's:
 					for j := 1; j < reduceLen; j++ {
 						log.Printf("...... %d [[%d; %s]]", j, newOffset, reduction)
-						reduction = fn(c, reduction, oldVec[oldOffset+j*reduceStride], DefaultDim)
+						reduction = fn(c, reduction, oldVec[oldOffset+j*reduceStride], DefaultAxis)
 						if toScan {
 							newVec[newOffset+j*reduceStride] = reduction
 							log.Printf("Scan...%d  newVec: %v [[%d; %s]]", j, newVec, newOffset+j*reduceStride, reduction)
@@ -142,7 +142,7 @@ func MkReduceOrScanOp(name string, fn DyadicFunc, identity Val, toScan bool) Mon
 					newVec[newOffset] = reduction
 					log.Printf("Reduction...  newVec: %v [[%d; %s]]", newVec, newOffset, reduction)
 				}
-			} else if len(oldShape) == revdim {
+			} else if len(oldShape) == revAxis {
 				// This is the old dimension we reduce.
 				// It exists in the oldShape but not in the newShape, if reducing.
 				// We do not iterate i here -- that will happen above when rank==0.
@@ -184,7 +184,7 @@ func asMat(a Val) *Mat {
 	return mat
 }
 
-func dyadicRho(c *Context, a Val, b Val, dim int) Val {
+func dyadicRho(c *Context, a Val, b Val, axis int) Val {
 	var shape []int
 
 	am := asMat(a)
@@ -228,7 +228,7 @@ type FuncFloatFloatBool func(float64, float64) bool
 type FuncFloatFloatFloat func(float64, float64) float64
 
 func WrapFloatDyadic(fn FuncFloatFloatFloat) DyadicFunc {
-	return func(c *Context, a, b Val, dim int) Val {
+	return func(c *Context, a, b Val, axis int) Val {
 		x := a.GetScalarFloat()
 		y := b.GetScalarFloat()
 		return &Num{fn(x, y)}
@@ -236,7 +236,7 @@ func WrapFloatDyadic(fn FuncFloatFloatFloat) DyadicFunc {
 }
 
 func WrapFloatBoolDyadic(fn FuncFloatFloatBool) DyadicFunc {
-	return func(c *Context, a, b Val, dim int) Val {
+	return func(c *Context, a, b Val, axis int) Val {
 		x := a.GetScalarFloat()
 		y := b.GetScalarFloat()
 		if fn(x, y) {
@@ -263,7 +263,7 @@ func SameShape(a, b *Mat) bool {
 }
 
 func WrapMatMatDyadic(fn DyadicFunc) DyadicFunc {
-	return func(c *Context, a, b Val, dim int) Val {
+	return func(c *Context, a, b Val, axis int) Val {
 		switch x := a.(type) {
 		case *Mat:
 			switch y := b.(type) {
@@ -283,7 +283,7 @@ func WrapMatMatDyadic(fn DyadicFunc) DyadicFunc {
 						if y1 == nil {
 							log.Panicf("RHS not a scalar at matrix offset %d: %s", i, y1)
 						}
-						vec[i] = fn(c, x1, y1, dim)
+						vec[i] = fn(c, x1, y1, axis)
 					}
 
 					return &Mat{M: vec, S: x.S}
@@ -299,7 +299,7 @@ func WrapMatMatDyadic(fn DyadicFunc) DyadicFunc {
 					if x1 == nil {
 						log.Panicf("LHS not a scalar at matrix offset %d: %s", i, x1)
 					}
-					vec[i] = fn(c, x1, ys, dim)
+					vec[i] = fn(c, x1, ys, axis)
 				}
 
 				return &Mat{M: vec, S: x.S}
@@ -324,7 +324,7 @@ func WrapMatMatDyadic(fn DyadicFunc) DyadicFunc {
 					if y1 == nil {
 						log.Panicf("RHS not a scalar at matrix offset %d: %s", i, y1)
 					}
-					vec[i] = fn(c, xs, y1, dim)
+					vec[i] = fn(c, xs, y1, axis)
 				}
 
 				return &Mat{M: vec, S: y.S}
@@ -335,6 +335,6 @@ func WrapMatMatDyadic(fn DyadicFunc) DyadicFunc {
 		if ys == nil {
 			log.Panicf("RHS neither matrix nor scalar: %s", b)
 		}
-		return fn(c, xs, ys, dim)
+		return fn(c, xs, ys, axis)
 	}
 }
