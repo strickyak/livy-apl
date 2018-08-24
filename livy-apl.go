@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 var Prompt = flag.String("p", "      ", "APL interpreter prompt")
 var Quiet = flag.Bool("q", false, "supress log messages")
 var CrashOnError = flag.Bool("e", false, "crash dump on error")
+var Raw = flag.Bool("r", false, "print raw results")
 
 func EvalString(c *Context, line string) (val Val, err error) {
 	if !*CrashOnError {
@@ -102,7 +104,19 @@ func main() {
 			name := fmt.Sprintf("_%d", i)
 			c.Globals[name] = result
 			c.Globals["_"] = result
-			fmt.Fprintf(os.Stdout, "%s = %s\n", name, result)
+			if *Raw {
+				fmt.Fprintf(os.Stdout, "%s = %s\n", name, result)
+			} else {
+				bb := bytes.NewBuffer(nil)
+				shape := result.Shape()
+				if len(shape) > 0 {
+					for _, x := range shape {
+						fmt.Fprintf(bb, "%d ", x)
+					}
+					fmt.Fprintf(bb, " rho")
+				}
+				fmt.Fprintf(os.Stdout, "%s = %s\n%s\n", name, bb.String(), result.Pretty())
+			}
 			i++
 		}
 	}
