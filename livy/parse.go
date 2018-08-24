@@ -8,6 +8,20 @@ package livy
 // "So let us let our ordinals start at zero: ..."
 //   — Edsger W. Dijkstra
 
+// I used to describe [Pascal] as a ‘fascist programming language’,
+// because it is dictatorially rigid. …
+// If Pascal is fascist, APL is anarchist.
+//   — Brad McCormick
+// http://www.computerhistory.org/atchm/the-apl-programming-language-source-code/#footnote-13
+// http://www.users.cloud9.net/~bradmcc/APL.html
+
+// APL is a mistake, carried through to perfection. It is the language
+// of the future for the programming techniques of the past: it creates a
+// new generation of coding bums.
+//   — Edsger W. Dijkstra
+// http://www.computerhistory.org/atchm/the-apl-programming-language-source-code/#footnote-14
+// https://www.cs.virginia.edu/~evans/cs655/readings/ewd498.html
+
 import (
 	"fmt"
 	"log"
