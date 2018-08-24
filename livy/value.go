@@ -63,6 +63,26 @@ func (o Char) Pretty() string {
 func (o Num) Pretty() string {
 	return fmt.Sprintf("%.15f ", o.F)
 }
+func (o Mat) PrettyMatrix(vec []string) string {
+	var bb bytes.Buffer
+	rank := len(o.S)
+	switch rank {
+	case 0:
+		panic("bad case")
+	case 1:
+		for _, s := range vec {
+			bb.WriteString(s)
+		}
+	default:
+		for i := 0; i < o.S[0]; i++ {
+			begin := i * mulReduce(o.S[1:])
+			end := (i + 1) * mulReduce(o.S[1:])
+			bb.WriteString(Mat{M: o.M[begin:end], S: o.S[1:]}.PrettyMatrix(vec[begin:end]))
+			bb.WriteString("\n")
+		}
+	}
+	return bb.String()
+}
 func (o Mat) Pretty() string {
 	var bb bytes.Buffer
 	rank := len(o.S)
@@ -77,12 +97,31 @@ func (o Mat) Pretty() string {
 			bb.WriteString(v.String())
 		}
 	default:
-		for i := 0; i < o.S[0]; i++ {
-			begin := i * mulReduce(o.S[1:])
-			end := (i + 1) * mulReduce(o.S[1:])
-			bb.WriteString(Mat{M: o.M[begin:end], S: o.S[1:]}.Pretty())
-			bb.WriteString("\n")
+		var ss []string
+		// Get String of each matrix element.
+		for _, x := range o.M {
+			ss = append(ss, x.String())
 		}
+		// Get widest by last dimension.
+		lastDim := o.S[len(o.S)-1]
+		for j := 0; j < lastDim; j++ {
+			w := 0
+			for i := j; i < len(ss); i += lastDim {
+				if len(ss[i]) > w {
+					w = len(ss[i])
+				}
+			}
+			for i := j; i < len(ss); i += lastDim {
+				s := ss[i]
+				for len(s) < w {
+					s = " " + s
+				}
+				ss[i] = s
+				log.Printf("%d/%d/%q", i, len(ss[i]), ss[i])
+			}
+		}
+
+		return o.PrettyMatrix(ss)
 	}
 	return bb.String()
 }
