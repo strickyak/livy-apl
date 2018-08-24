@@ -61,7 +61,7 @@ func (o Char) Pretty() string {
 	return fmt.Sprintf("'%c' ", o.R)
 }
 func (o Num) Pretty() string {
-	return fmt.Sprintf("%g ", o.F)
+	return fmt.Sprintf("%.15f ", o.F)
 }
 func (o Mat) Pretty() string {
 	var bb bytes.Buffer
