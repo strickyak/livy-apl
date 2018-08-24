@@ -76,13 +76,6 @@ func (o Mat) Pretty() string {
 		for _, v := range o.M {
 			bb.WriteString(v.String())
 		}
-	case 2:
-		for i := 0; i < o.S[0]; i++ {
-			begin := i * o.S[1]
-			end := (i + 1) * o.S[1]
-			bb.WriteString(Mat{M: o.M[begin:end], S: o.S[1:]}.Pretty())
-			bb.WriteString("\n")
-		}
 	default:
 		for i := 0; i < o.S[0]; i++ {
 			begin := i * mulReduce(o.S[1:])
