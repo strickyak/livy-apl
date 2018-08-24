@@ -8,6 +8,7 @@ import (
 type MonadicFunc func(c *Context, b Val, dim int) Val
 
 var StandardMonadics = map[string]MonadicFunc{
+	"rot":  rotMonadic,
 	"iota": iotaMonadic,
 	"rho":  rhoMonadic,
 	"asin": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
@@ -149,4 +150,27 @@ func WrapMatMonadic(fn MonadicFunc) MonadicFunc {
 		}
 		return fn(c, ys, axis)
 	}
+}
+
+func rotMonadic(c *Context, b Val, axis int) Val {
+	mat, ok := b.(*Mat)
+	if !ok {
+		// scalar is like 1x1, whose rot or flip is itself.
+		return b
+	}
+
+	shape := mat.S
+	n := len(shape)
+	if n < 1 {
+		// rot or flip on Emptiness yields Emptiness.
+		return b
+	}
+	axis = (((axis % n) + n) % n)
+
+	axisLen := shape[axis]
+	var reversed []Val
+	for i := axisLen - 1; i >= 0; i-- {
+		reversed = append(reversed, &Num{float64(i)})
+	}
+	return dyadicRot(c, &Mat{reversed, []int{axisLen}}, b, axis)
 }

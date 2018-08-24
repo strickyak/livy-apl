@@ -9,6 +9,7 @@ type DyadicFunc func(c *Context, a Val, b Val, axis int) Val
 
 var StandardDyadics = map[string]DyadicFunc{
 	"rho": dyadicRho,
+	"rot": dyadicRot,
 
 	"==": WrapMatMatDyadic(WrapFloatBoolDyadic(
 		func(a, b float64) bool { return a == b })),
@@ -63,9 +64,29 @@ func init() {
 		if ok {
 			reduceName := name + `/`
 			StandardMonadics[reduceName] = MkReduceOrScanOp(reduceName, fn, identity, false)
+
 			scanName := name + `\`
 			StandardMonadics[scanName] = MkReduceOrScanOp(scanName, fn, identity, true)
+
+			outerProductName := "@." + name
+			StandardDyadics[outerProductName] = MkOuterProduct(outerProductName, fn)
 		}
+	}
+}
+
+func MkOuterProduct(name string, fn DyadicFunc) DyadicFunc {
+	return func(c *Context, a Val, b Val, axis int) Val {
+		aa := GetVectorOfScalarVals(a)
+		bb := GetVectorOfScalarVals(b)
+		sz := len(aa) * len(bb)
+		vec := make([]Val, sz)
+		for ia, fa := range aa {
+			for ib, fb := range bb {
+				x := fn(c, fa, fb, -1)
+				vec[ia*len(bb)+ib] = x
+			}
+		}
+		return &Mat{M: vec, S: []int{len(aa), len(bb)}}
 	}
 }
 
@@ -337,4 +358,135 @@ func WrapMatMatDyadic(fn DyadicFunc) DyadicFunc {
 		}
 		return fn(c, xs, ys, axis)
 	}
+}
+
+func GetVectorOfScalarVals(a Val) []Val {
+	var z []Val
+
+	mat, ok := a.(*Mat)
+	if !ok {
+		// degenerate vector from scalar.
+		y := a.GetScalarOrNil()
+		if y == nil {
+			log.Panicf("GetVectorOfScalarVals: neither vector nor scalar: %v", a)
+		}
+		z = append(z, y)
+	} else {
+		for _, x := range mat.M {
+			y := x.GetScalarOrNil()
+			if y == nil {
+				log.Panicf("GetVectorOfScalarVals: item not scalar")
+			}
+			z = append(z, y)
+		}
+	}
+	return z
+}
+
+func GetVectorOfScalarFloats(a Val) []float64 {
+	var z []float64
+
+	mat, ok := a.(*Mat)
+	if !ok {
+		// degenerate vector from scalar.
+		z = append(z, a.GetScalarFloat())
+	} else {
+		// convert vector to float64s.
+		for _, x := range mat.M {
+			z = append(z, x.GetScalarFloat())
+		}
+	}
+	return z
+}
+
+func GetVectorOfScalarInts(a Val) []int {
+	var z []int
+
+	mat, ok := a.(*Mat)
+	if !ok {
+		// degenerate vector from scalar.
+		z = append(z, a.GetScalarInt())
+	} else {
+		// convert vector to ints.
+		for _, x := range mat.M {
+			z = append(z, x.GetScalarInt())
+		}
+	}
+	return z
+}
+
+func dyadicRot(c *Context, a Val, b Val, axis int) Val {
+	// spec is the rearrangement specification.
+	var spec []int
+	spec = GetVectorOfScalarInts(a)
+	/*
+		specMat, ok := a.(*Mat)
+		if !ok {
+			// degenerate vector from scalar.
+			spec = append(spec, a.GetScalarInt())
+		} else {
+			// convert vector to ints.
+			for _, x := range specMat.M {
+				println(x)
+				spec = append(spec, x.GetScalarInt())
+			}
+		}
+	*/
+	mat, ok := b.(*Mat)
+	if !ok {
+		// scalar is like 1x1, whose rot or flip is itself.
+		return b
+	}
+	inVec := mat.M
+	inShape := mat.S
+	n := len(inShape)
+	if n < 1 {
+		// rot or flip on Emptiness yields Emptiness.
+		return b
+	}
+	axis = ((axis % n) + n) % n
+	revaxis := n - axis
+
+	// Result shape
+	var outShape []int
+	for i, sz := range inShape {
+		if i == axis {
+			outShape = append(outShape, len(spec))
+		} else {
+			outShape = append(outShape, sz)
+		}
+	}
+	outSize := mulReduce(outShape)
+	if outSize < 1 {
+		return &Mat{M: nil, S: outShape}
+	}
+	outVec := make([]Val, outSize)
+
+	var recurse func(inShape []int, inOff int, outShape []int, outOff int)
+	recurse = func(inShape []int, inOff int, outShape []int, outOff int) {
+		switch len(outShape) {
+		case 0:
+			// log.Printf("Assign out [%d] <- in [%d]", outOff, inOff)
+			outVec[outOff] = inVec[inOff]
+		case revaxis:
+			inStride := mulReduce(inShape[1:])
+			outStride := mulReduce(outShape[1:])
+			for o := 0; o < outShape[0]; o++ {
+				i := spec[o]
+				i = ((i % inShape[0]) + inShape[0]) % inShape[0]
+				recurse(inShape[1:], inOff+i*inStride,
+					outShape[1:], outOff+o*outStride)
+			}
+		default:
+			inStride := mulReduce(inShape[1:])
+			outStride := mulReduce(outShape[1:])
+			for o := 0; o < outShape[0]; o++ {
+				i := o
+				recurse(inShape[1:], inOff+i*inStride,
+					outShape[1:], outOff+o*outStride)
+			}
+		}
+	}
+	recurse(inShape, 0, outShape, 0)
+	return &Mat{M: outVec, S: outShape}
 }
