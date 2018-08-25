@@ -8,8 +8,10 @@ import (
 type DyadicFunc func(c *Context, a Val, b Val, axis int) Val
 
 var StandardDyadics = map[string]DyadicFunc{
-	"rho": dyadicRho,
-	"rot": dyadicRot,
+	"rho":  dyadicRho,
+	"rot":  dyadicRot,
+	"take": dyadicTake,
+	"drop": dyadicDrop,
 
 	"==": WrapMatMatDyadic(WrapFloatBoolDyadic(
 		func(a, b float64) bool { return a == b })),
@@ -488,5 +490,79 @@ func dyadicRot(c *Context, a Val, b Val, axis int) Val {
 		}
 	}
 	recurse(inShape, 0, outShape, 0)
+	return &Mat{M: outVec, S: outShape}
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+func xor(a, b bool) bool {
+	if a {
+		return !b
+	}
+	return b
+}
+func dyadicTake(c *Context, a Val, b Val, axis int) Val {
+	return dyadicTakeOrDrop(c, a, b, axis, false)
+}
+func dyadicDrop(c *Context, a Val, b Val, axis int) Val {
+	return dyadicTakeOrDrop(c, a, b, axis, true)
+}
+func dyadicTakeOrDrop(c *Context, a Val, b Val, axis int, doBeDropping bool) Val {
+	if axis != -1 {
+		log.Panicf("Cannot specify axis for take or drop: %d", axis)
+	}
+	spec := GetVectorOfScalarInts(a)
+	mat, ok := b.(*Mat)
+	if !ok {
+		log.Panicf("Dyadic Take wants matrix on right, but got %#v", b)
+	}
+	inVec := mat.M
+	inShape := mat.S
+	if len(spec) != len(inShape) {
+		log.Panicf("Dyadic Take wants them to be the same, but len(LHS) == %d and len(shape(RHS)) == %d", len(spec), len(inShape))
+	}
+
+	// Figure out the outShape (how many to copy) and the inStart (where to start copying from).
+	var outShape []int
+	var inStart []int
+	for i, sz := range inShape {
+		k := abs(spec[i])
+		if k > sz {
+			log.Panicf("Dyadic Take LHS[%d] abs too big, is %d; RHS shape is %v", i, spec[i], i, inShape)
+		}
+		if doBeDropping {
+			k = sz - k // k is how many to keep.
+		}
+		outShape = append(outShape, k)
+		if xor(doBeDropping, spec[i] < 0) {
+			inStart = append(inStart, sz-k)
+		} else {
+			inStart = append(inStart, 0)
+		}
+	}
+	outVec := make([]Val, mulReduce(outShape))
+
+	log.Printf("inStart %v", inStart)
+	log.Printf("inShape %v", inShape)
+	log.Printf("outShape %v", outShape)
+
+	var recurse func(inStart []int, inShape []int, inOff int, outShape []int, outOff int)
+	recurse = func(inStart []int, inShape []int, inOff int, outShape []int, outOff int) {
+		if len(inStart) == 0 {
+			log.Printf("CP %d <= %d", outOff, inOff)
+			outVec[outOff] = inVec[inOff]
+			return
+		}
+		inStride := mulReduce(inShape[1:])
+		outStride := mulReduce(outShape[1:])
+		for i := 0; i < outShape[0]; i++ {
+			recurse(inStart[1:], inShape[1:], inOff+(inStart[0]+i)*inStride, outShape[1:], outOff+i*outStride)
+		}
+	}
+	recurse(inStart, inShape, 0, outShape, 0)
 	return &Mat{M: outVec, S: outShape}
 }
