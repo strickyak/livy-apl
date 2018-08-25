@@ -47,16 +47,18 @@ type Number struct {
 }
 
 type Monad struct {
-	Op   string
-	B    Expression
-	Axis Expression
+	Token *Token
+	Op    string
+	B     Expression
+	Axis  Expression
 }
 
 type Dyad struct {
-	A    Expression
-	Op   string
-	B    Expression
-	Axis Expression
+	Token *Token
+	A     Expression
+	Op    string
+	B     Expression
+	Axis  Expression
 }
 
 type List struct {
@@ -111,9 +113,33 @@ func (o Dyad) Eval(c *Context) Val {
 	if o.Op == "=" {
 		return o.Assign(c)
 	}
-	fn, ok := c.Dyadics[o.Op]
-	if !ok {
-		log.Panicf("No such dyadaic operator %q", o.Op)
+	var fn DyadicFunc
+	switch o.Token.Type {
+	case OperatorToken:
+		fn1, ok := c.Dyadics[o.Op]
+		if !ok {
+			log.Panicf("No such dyadaic operator %q", o.Op)
+		}
+		fn = fn1
+	case InnerProductToken:
+		op1 := o.Token.Match[1]
+		fn1, ok := c.Dyadics[op1]
+		if !ok {
+			log.Panicf("No such dyadaic operator %q", op1)
+		}
+		op2 := o.Token.Match[2]
+		fn2, ok := c.Dyadics[op2]
+		if !ok {
+			log.Panicf("No such dyadaic operator %q", op2)
+		}
+		fn = MkInnerProduct(o.Token.Str, fn1, fn2)
+	case OuterProductToken:
+		op1 := o.Token.Match[1]
+		fn1, ok := c.Dyadics[op1]
+		if !ok {
+			log.Panicf("No such dyadaic operator %q", op1)
+		}
+		fn = MkOuterProduct(o.Token.Str, fn1)
 	}
 	a := o.A.Eval(c)
 	axis := DefaultAxis
@@ -357,7 +383,7 @@ LOOP:
 			break LOOP
 		case BraToken:
 			log.Panicf("Unexpected `[` at position %d: %s", t.Pos, lex.Source)
-		case OperatorToken:
+		case InnerProductToken, OuterProductToken, OperatorToken:
 			axis := Expression(nil)
 			var j int
 			if tt[i+1].Type == BraToken {
@@ -373,11 +399,11 @@ LOOP:
 			b, j := ParseExpr(lex, i+1)
 			switch len(vec) {
 			case 0:
-				return &Monad{t.Str, b, axis}, j
+				return &Monad{t, t.Str, b, axis}, j
 			case 1:
-				return &Dyad{vec[0], t.Str, b, axis}, j
+				return &Dyad{t, vec[0], t.Str, b, axis}, j
 			default:
-				return &Dyad{&List{vec}, t.Str, b, axis}, j
+				return &Dyad{t, &List{vec}, t.Str, b, axis}, j
 			}
 		case NumberToken:
 			num, err := strconv.ParseFloat(t.Str, 64)

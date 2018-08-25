@@ -64,14 +64,11 @@ func init() {
 	for name, identity := range ScanAndReduceWithIdentity {
 		fn, ok := StandardDyadics[name]
 		if ok {
+			// TODO: MkReduceOrScanOp on the fly.
 			reduceName := name + `/`
 			StandardMonadics[reduceName] = MkReduceOrScanOp(reduceName, fn, identity, false)
-
 			scanName := name + `\`
 			StandardMonadics[scanName] = MkReduceOrScanOp(scanName, fn, identity, true)
-
-			outerProductName := "@." + name
-			StandardDyadics[outerProductName] = MkOuterProduct(outerProductName, fn)
 		}
 	}
 }
@@ -89,6 +86,79 @@ func MkOuterProduct(name string, fn DyadicFunc) DyadicFunc {
 			}
 		}
 		return &Mat{M: vec, S: []int{len(aa), len(bb)}}
+	}
+}
+
+func MkInnerProduct(name string, fn1, fn2 DyadicFunc) DyadicFunc {
+	return func(c *Context, a Val, b Val, axis int) Val {
+		mat1, ok := a.(*Mat)
+		if !ok {
+			log.Panicf("LHS of inner product %q not a matrix: %v", name, a)
+		}
+
+		mat2, ok := b.(*Mat)
+		if !ok {
+			log.Panicf("RHS of inner product %q not a matrix: %v", name, b)
+		}
+
+		vec1, vec2 := mat1.M, mat2.M
+		shape1, shape2 := mat1.S, mat2.S
+		rank1, rank2 := len(shape1), len(shape2)
+		if rank1 < 1 {
+			log.Panicf("LHS of inner product %q has rank 0: %v", name, a)
+		}
+		if rank2 < 1 {
+			log.Panicf("RHS of inner product %q has rank 0: %v", name, b)
+		}
+		if shape1[rank1-1] != shape2[0] {
+			log.Panicf("Dimension conflict in inner product %q: LHS is shape %v; RHS is shape %v", name, shape1, shape2)
+		}
+
+		var outShape []int
+		for _, sz := range shape1[:rank1-1] {
+			outShape = append(outShape, sz)
+		}
+		for _, sz := range shape2[1:] {
+			outShape = append(outShape, sz)
+		}
+		outVec := make([]Val, mulReduce(outShape))
+		innerStride1 := 1
+		innerStride2 := mulReduce(shape2[1:])
+		innerLength := shape2[0]
+		log.Printf("innerStride 1:%d 2:%d innerLength:%d", innerStride1, innerStride2, innerLength)
+
+		var recurse func(shape1, shape2 []int, off1, off2 int, outShape []int, outOff int)
+		recurse = func(shape1, shape2 []int, off1, off2 int, outShape []int, outOff int) {
+			rank1, rank2, outRank := len(shape1), len(shape2), len(outShape)
+			log.Printf("Rank(%d,%d -> %d) : shape( %v , %v -> %v ) : off (%d,%d -> %d)", rank1, rank2, outRank, shape1, shape2, outShape, off1, off2, outOff)
+			if outRank == 0 {
+				j := innerLength - 1
+				rhs := fn2(c, vec1[off1+j*innerStride1], vec2[off2+j*innerStride2], -1)
+				for i := innerLength - 2; i >= 0; i-- {
+					log.Printf(" rhs=%v [i=%d] vec1[%d] vec2[%d]", rhs, i, off1+i*innerStride1, off2+i*innerStride2)
+					lhs := fn2(c, vec1[off1+i*innerStride1], vec2[off2+i*innerStride2], -1)
+					rhs = fn1(c, lhs, rhs, -1)
+				}
+				outVec[outOff] = rhs
+			} else if rank1 == 1 {
+				// Stop using shape1 and start using shape2 when rank1 == 1.
+				stride2, outStride := mulReduce(shape2[1:]), mulReduce(outShape[1:])
+				for i := 0; i < shape2[0]; i++ {
+					recurse(shape1, shape2[1:], off1, off2+i*stride2, outShape[1:], outOff+i*outStride)
+				}
+			} else {
+				stride1, outStride := mulReduce(shape1[1:]), mulReduce(outShape[1:])
+				for i := 0; i < shape1[0]; i++ {
+					recurse(shape1[1:], shape2, off1+i*stride1, off2, outShape[1:], outOff+i*outStride)
+				}
+			}
+		}
+		recurse(shape1, shape2[1:], 0, 0, outShape, 0)
+		if len(outShape) == 0 {
+			return outVec[0]  // Return scalar.
+		} else {
+			return &Mat{M: outVec, S: outShape}
+		}
 	}
 }
 
@@ -511,7 +581,7 @@ func dyadicTake(c *Context, a Val, b Val, axis int) Val {
 func dyadicDrop(c *Context, a Val, b Val, axis int) Val {
 	return dyadicTakeOrDrop(c, a, b, axis, true)
 }
-func dyadicTakeOrDrop(c *Context, a Val, b Val, axis int, doBeDropping bool) Val {
+func dyadicTakeOrDrop(c *Context, a Val, b Val, axis int, dropping bool) Val {
 	if axis != -1 {
 		log.Panicf("Cannot specify axis for take or drop: %d", axis)
 	}
@@ -532,13 +602,13 @@ func dyadicTakeOrDrop(c *Context, a Val, b Val, axis int, doBeDropping bool) Val
 	for i, sz := range inShape {
 		k := abs(spec[i])
 		if k > sz {
-			log.Panicf("Dyadic Take LHS[%d] abs too big, is %d; RHS shape is %v", i, spec[i], i, inShape)
+			log.Panicf("Dyadic Take LHS[%d] abs too big, is %d; RHS shape is %v", i, spec[i], inShape)
 		}
-		if doBeDropping {
+		if dropping {
 			k = sz - k // k is how many to keep.
 		}
 		outShape = append(outShape, k)
-		if xor(doBeDropping, spec[i] < 0) {
+		if xor(dropping, spec[i] < 0) {
 			inStart = append(inStart, sz-k)
 		} else {
 			inStart = append(inStart, 0)

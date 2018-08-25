@@ -10,7 +10,7 @@ func TestEmpty(t *testing.T) {
 	got := Tokenize(s)
 	want := &Lex{
 		Tokens: []*Token{
-			{EndToken, "", 0},
+			{EndToken, "", 0, nil},
 		},
 		Source: s,
 		p:      len(s),
@@ -26,7 +26,7 @@ func TestWhite(t *testing.T) {
 	got := Tokenize(s)
 	want := &Lex{
 		Tokens: []*Token{
-			{EndToken, "", len(s)},
+			{EndToken, "", len(s), nil},
 		},
 		Source: s,
 		p:      len(s),
@@ -42,10 +42,10 @@ func TestVarOpNum(t *testing.T) {
 	got := Tokenize(s)
 	want := &Lex{
 		Tokens: []*Token{
-			{VariableToken, "Abc", 1},
-			{OperatorToken, "==", 4},
-			{NumberToken, "666", 6},
-			{EndToken, "", len(s)},
+			{VariableToken, "Abc", 1, []string{"Abc", "Abc"}},
+			{OperatorToken, "==", 4, []string{"==", "=="}},
+			{NumberToken, "666", 6, []string{"666", "666", "", ""}},
+			{EndToken, "", len(s), nil},
 		},
 		Source: s,
 		p:      len(s),

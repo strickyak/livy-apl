@@ -18,17 +18,24 @@ const (
 	BraToken
 	KetToken
 	SemiToken
+	InnerProductToken
+	OuterProductToken
 )
+
+const OPERATOR = `([-+*/\\,&|!=<>]+|[a-z][A-Za-z0-9_]*)`
 
 var MatchWhite = regexp.MustCompile(`^(\s*)`).FindStringSubmatch
 var MatchNumber = regexp.MustCompile(`^([-+]?[0-9]+([.][0-9]+)?([eE][-+]?[0-9]+)?)`).FindStringSubmatch
 var MatchVariable = regexp.MustCompile(`^([A-Z_][A-Za-z0-9_]*)`).FindStringSubmatch
-var MatchOperator = regexp.MustCompile(`^(([-+*/\\,&|!=<>@.]+)|([a-z][A-Za-z0-9_]*))`).FindStringSubmatch
+var MatchOperator = regexp.MustCompile("^" + OPERATOR).FindStringSubmatch
 var MatchOpen = regexp.MustCompile(`^[(]`).FindStringSubmatch
 var MatchClose = regexp.MustCompile(`^[)]`).FindStringSubmatch
 var MatchBra = regexp.MustCompile(`^[[]`).FindStringSubmatch
 var MatchKet = regexp.MustCompile(`^[]]`).FindStringSubmatch
 var MatchSemi = regexp.MustCompile(`^[;]`).FindStringSubmatch
+
+var MatchInnerProduct = regexp.MustCompile("^" + OPERATOR + "[.]" + OPERATOR).FindStringSubmatch
+var MatchOuterProduct = regexp.MustCompile("^[.][.]" + OPERATOR).FindStringSubmatch
 
 type Matcher struct {
 	Type    TokenType
@@ -38,6 +45,8 @@ type Matcher struct {
 var matchers = []Matcher{
 	{NumberToken, MatchNumber},
 	{VariableToken, MatchVariable},
+	{InnerProductToken, MatchInnerProduct},
+	{OuterProductToken, MatchOuterProduct},
 	{OperatorToken, MatchOperator},
 	{OpenToken, MatchOpen},
 	{CloseToken, MatchClose},
@@ -47,13 +56,14 @@ var matchers = []Matcher{
 }
 
 type Token struct {
-	Type TokenType
-	Str  string
-	Pos  int
+	Type  TokenType
+	Str   string
+	Pos   int
+	Match []string
 }
 
 func (t Token) String() string {
-	return fmt.Sprintf("T(%d,%q,%d)", t.Type, t.Str, t.Pos)
+	return fmt.Sprintf("T(%d,%q,%d,%#v)", t.Type, t.Str, t.Pos, t.Match)
 }
 
 type Lex struct {
@@ -75,7 +85,7 @@ func Tokenize(s string) *Lex {
 	lex := &Lex{
 		Source: s,
 	}
-	for lex.Next() {
+	for lex.DoNextToken() {
 		// log.Printf("LEX... %s", *lex)
 		continue
 	}
@@ -94,7 +104,7 @@ func Tokenize(s string) *Lex {
 	return lex
 }
 
-func (lex *Lex) Next() bool {
+func (lex *Lex) DoNextToken() bool {
 	// Skip white space.
 	mw := MatchWhite(lex.Source[lex.p:])
 	if mw != nil {
@@ -117,9 +127,10 @@ func (lex *Lex) Next() bool {
 		m := matcher.MatchFn(lex.Source[lex.p:])
 		if m != nil {
 			lex.Tokens = append(lex.Tokens, &Token{
-				Type: matcher.Type,
-				Str:  m[0],
-				Pos:  lex.p,
+				Type:  matcher.Type,
+				Str:   m[0],
+				Pos:   lex.p,
+				Match: m,
 			})
 			lex.p += len(m[0])
 			return true
