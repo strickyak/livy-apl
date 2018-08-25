@@ -155,7 +155,7 @@ func MkInnerProduct(name string, fn1, fn2 DyadicFunc) DyadicFunc {
 		}
 		recurse(shape1, shape2[1:], 0, 0, outShape, 0)
 		if len(outShape) == 0 {
-			return outVec[0]  // Return scalar.
+			return outVec[0] // Return scalar.
 		} else {
 			return &Mat{M: outVec, S: outShape}
 		}
