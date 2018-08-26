@@ -20,9 +20,13 @@ const (
 	SemiToken
 	InnerProductToken
 	OuterProductToken
+	OpenCurlyToken
+	CloseCurlyToken
+	KeywordToken
 )
 
 const OPERATOR = `([-+*/\\,&|!=<>]+|[a-z][A-Za-z0-9_]*)`
+const KEYWORD = `(def|if|then|elif|else|fi)\b`
 
 var MatchWhite = regexp.MustCompile(`^(\s*)`).FindStringSubmatch
 var MatchNumber = regexp.MustCompile(`^([-+]?[0-9]+([.][0-9]+)?([eE][-+]?[0-9]+)?)`).FindStringSubmatch
@@ -30,12 +34,15 @@ var MatchVariable = regexp.MustCompile(`^([A-Z_][A-Za-z0-9_]*)`).FindStringSubma
 var MatchOperator = regexp.MustCompile("^" + OPERATOR).FindStringSubmatch
 var MatchOpen = regexp.MustCompile(`^[(]`).FindStringSubmatch
 var MatchClose = regexp.MustCompile(`^[)]`).FindStringSubmatch
+var MatchOpenCurly = regexp.MustCompile(`^[{]`).FindStringSubmatch
+var MatchCloseCurly = regexp.MustCompile(`^[}]`).FindStringSubmatch
 var MatchBra = regexp.MustCompile(`^[[]`).FindStringSubmatch
 var MatchKet = regexp.MustCompile(`^[]]`).FindStringSubmatch
 var MatchSemi = regexp.MustCompile(`^[;]`).FindStringSubmatch
 
 var MatchInnerProduct = regexp.MustCompile("^" + OPERATOR + "[.]" + OPERATOR).FindStringSubmatch
 var MatchOuterProduct = regexp.MustCompile("^[.][.]" + OPERATOR).FindStringSubmatch
+var MatchKeyword = regexp.MustCompile("^" + KEYWORD).FindStringSubmatch
 
 type Matcher struct {
 	Type    TokenType
@@ -43,6 +50,7 @@ type Matcher struct {
 }
 
 var matchers = []Matcher{
+	{KeywordToken, MatchKeyword},
 	{NumberToken, MatchNumber},
 	{VariableToken, MatchVariable},
 	{InnerProductToken, MatchInnerProduct},
@@ -50,6 +58,8 @@ var matchers = []Matcher{
 	{OperatorToken, MatchOperator},
 	{OpenToken, MatchOpen},
 	{CloseToken, MatchClose},
+	{OpenCurlyToken, MatchOpenCurly},
+	{CloseCurlyToken, MatchCloseCurly},
 	{BraToken, MatchBra},
 	{KetToken, MatchKet},
 	{SemiToken, MatchSemi},

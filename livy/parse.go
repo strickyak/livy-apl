@@ -69,6 +69,15 @@ type Seq struct {
 	Vec []Expression
 }
 
+type Def struct {
+	Name   string
+	Seq    *Seq
+	Lhs    string
+	Axis   string
+	Rhs    string
+	Locals []string
+}
+
 type Subscript struct {
 	Var *Variable
 	Vec []Expression
@@ -160,6 +169,55 @@ func (o List) Eval(c *Context) Val {
 		vec = append(vec, e)
 	}
 	return &Mat{M: vec, S: []int{len(vec)}}
+}
+
+func (o Def) Eval(c *Context) Val {
+	fn := func(c *Context, a Val, b Val, axis int) Val {
+		// We do the stupid thing where all variables
+		// are used from c.Globals context, but we save and
+		// restore global variables shadowed by local
+		// variables on entry and exit to functions.
+		localMap := make(map[string]Val)
+		for _, lvar := range o.Locals {
+			gval, _ := c.Globals[lvar]
+			localMap[lvar] = gval
+			c.Globals[lvar] = &Num{0}
+		}
+		c.LocalStack = append(c.LocalStack, localMap)
+		defer func() {
+			n_1 := len(c.LocalStack) - 1
+			localMap = c.LocalStack[n_1]
+			c.LocalStack = c.LocalStack[:n_1]
+			for _, lvar := range o.Locals {
+				saved := localMap[lvar]
+				if saved == nil {
+					delete(c.Globals, lvar)
+				} else {
+					c.Globals[lvar] = saved
+				}
+			}
+		}()
+
+		if o.Lhs != "" {
+			c.Globals[o.Lhs] = a
+		}
+		if o.Axis != "" {
+			c.Globals[o.Axis] = &Num{float64(axis)}
+		}
+		c.Globals[o.Rhs] = b
+		return o.Seq.Eval(c)
+	}
+
+	if o.Lhs == "" {
+		c.Monadics[o.Name] = func(c *Context, b Val, axis int) Val {
+			return fn(c, nil, b, axis)
+		}
+	} else {
+		c.Dyadics[o.Name] = func(c *Context, a Val, b Val, axis int) Val {
+			return fn(c, a, b, axis)
+		}
+	}
+	return &Box{"def"}
 }
 
 func (o Seq) Eval(c *Context) Val {
@@ -317,6 +375,10 @@ func (o List) String() string {
 	return fmt.Sprintf("List(%#v)", o.Vec)
 }
 
+func (o Def) String() string {
+	return fmt.Sprintf("Def(%q %q [%q] %q %v %v)", o.Lhs, o.Name, o.Axis, o.Rhs, o.Locals, o.Seq)
+}
+
 func (o Seq) String() string {
 	return fmt.Sprintf("Seq(%#v)", o.Vec)
 }
@@ -346,10 +408,9 @@ func ParseBracket(lex *Lex, i int) ([]Expression, int) {
 	}
 }
 
-func ParseSeq(lex *Lex) *Seq {
+func ParseSeq(lex *Lex, i int) (*Seq, int) {
 	tt := lex.Tokens
 	var vec []Expression
-	i := 0
 LOOP:
 	for i < len(tt) && tt[i].Type != EndToken {
 		log.Printf("ParseSeq: i=%d max=%d token=%s", i, len(tt), tt[i])
@@ -359,7 +420,7 @@ LOOP:
 		i = j
 
 		switch tt[i].Type {
-		case EndToken:
+		case EndToken, CloseCurlyToken:
 			break LOOP
 		case SemiToken:
 			i++
@@ -369,7 +430,82 @@ LOOP:
 		}
 	}
 
-	return &Seq{vec}
+	return &Seq{vec}, i
+}
+
+func ParseDef(lex *Lex, i int) (*Def, int) {
+	var lhs, axis, rhs string
+	var locals []string
+
+	tt := lex.Tokens
+	t := tt[i]
+	// Expect operator.
+	if t.Type == VariableToken {
+		lhs = t.Str
+		locals = append(locals, lhs)
+		i++
+		t = tt[i]
+	}
+
+	if t.Type != OperatorToken {
+		log.Fatalf("expected operator after def, but got %v", t)
+	}
+	name := t.Str
+	i++
+	t = tt[i]
+	if t.Type == BraToken {
+		i++
+		t = tt[i]
+		if t.Type != VariableToken {
+			log.Fatalf("expected AXIS variable after def operator open-bracket, but got %v", t)
+		}
+		axis = t.Str
+		locals = append(locals, axis)
+		i++
+		t = tt[i]
+		if t.Type != KetToken {
+			log.Fatalf("expected close-bracket def operator open-bracket axis, but got %v", t)
+		}
+		i++
+		t = tt[i]
+	}
+	if t.Type != VariableToken {
+		log.Fatalf("expected RHS variable after def, but got %v", t)
+	}
+	rhs = t.Str
+	locals = append(locals, rhs)
+	i++
+	t = tt[i]
+
+	for t.Type == SemiToken {
+		i++
+		t = tt[i]
+		// Allow extra semicolon before open curly.
+		if t.Type == OpenCurlyToken {
+			break
+		}
+		if t.Type != VariableToken {
+			log.Fatalf("expected local variable name after def semicolon, but got %v", t)
+		}
+		locals = append(locals, t.Str)
+		i++
+		t = tt[i]
+	}
+
+	if t.Type != OpenCurlyToken {
+		log.Fatalf("expected open-curly-brace after operator after def, but got %v", t)
+	}
+	i++
+
+	seq, j := ParseSeq(lex, i)
+	i = j
+	t = tt[i]
+
+	if t.Type != CloseCurlyToken {
+		log.Fatalf("expected close-curly-brace after operator after def, but got %v", t)
+	}
+	i++
+	return &Def{name, seq, lhs, axis, rhs, locals}, i
 }
 
 func ParseExpr(lex *Lex, i int) (z Expression, zi int) {
@@ -379,10 +515,21 @@ LOOP:
 	for {
 		t := tt[i]
 		switch t.Type {
-		case EndToken, CloseToken, KetToken, SemiToken:
+		case KeywordToken:
+			switch t.Str {
+			case "def":
+				def, j := ParseDef(lex, i+1)
+				vec = append(vec, def)
+				i = j
+			default:
+				panic("not yet")
+			}
+		case EndToken, CloseToken, KetToken, SemiToken, CloseCurlyToken:
 			break LOOP
 		case BraToken:
 			log.Panicf("Unexpected `[` at position %d: %s", t.Pos, lex.Source)
+		case OpenCurlyToken:
+			log.Panicf("Unexpected `{` at position %d: %s", t.Pos, lex.Source)
 		case InnerProductToken, OuterProductToken, OperatorToken:
 			axis := Expression(nil)
 			var j int

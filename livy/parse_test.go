@@ -206,6 +206,18 @@ var evalTests = []srcWantPair{
 
 	// resize to scalar
 	{`(iota 0) rho 111 + iota 10`, `111 `},
+
+	// def
+	{`def twice _x { _x * 2 } ; twice 4 5 6`, `[3 ]{8 10 12 } `},
+
+	{`def primes N { ( 2 == +/ 0 == (iota1 N) ..mod iota1 N ) / iota1 N } ; primes 20`, `[8 ]{2 3 5 7 11 13 17 19 } `},
+
+	{` def A dot B; C; D; E { C = D = E = F = 999 ;  A +.* B } ; 10 20 30 dot 1 2 3 `, `140 `},
+	{` def A dot B; C; D; E; { C = D = E = F = 999 ;  A +.* B } ; 10 20 30 dot 1 2 3 `, `140 `},
+
+	{`def *** A { (iota1 A) ..* iota1 A } ; *** 4`, `[4 4 ]{1 2 3 4 2 4 6 8 3 6 9 12 4 8 12 16 } `},
+	{`def sum [Axis] B { +/[Axis] B } ; sum[0] 3 5 rho iota1 20`, `[5 ]{18 21 24 27 30 } `},
+	{`def sum [Axis] B { +/[Axis] B } ; sum[1] 3 5 rho iota1 20`, `[3 ]{15 40 65 } `},
 }
 
 func TestEval(t *testing.T) {
@@ -213,7 +225,7 @@ func TestEval(t *testing.T) {
 		log.Printf("TestEval <<< %q", p.src)
 		c := Standard()
 		lex := Tokenize(p.src)
-		expr := ParseSeq(lex)
+		expr, _ := ParseSeq(lex, 0)
 		got := expr.Eval(c)
 		log.Printf("TestEval === %q", p.src)
 		log.Printf("TestEval >>> %v", got)

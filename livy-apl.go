@@ -35,7 +35,7 @@ func EvalString(c *Context, line string) (val Val, err error) {
 		}()
 	}
 	lex := Tokenize(line)
-	expr := ParseSeq(lex)
+	expr, _ := ParseSeq(lex, 0)
 	val = expr.Eval(c)
 	return
 }
