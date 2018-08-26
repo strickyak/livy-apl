@@ -310,9 +310,9 @@ func dyadicRho(c *Context, a Val, b Val, axis int) Val {
 		log.Panicf("Cannot resize empty matrix to shape %v", spec)
 	}
 
-	//if len(spec) == 0 {
-	//return &Mat{nil, nil}
-	//}
+	if len(spec) == 0 {
+		return bm.M[0]
+	}
 
 	var vec []Val
 	vec, _ = recursiveFill(spec, bm.M, vec, 0)
