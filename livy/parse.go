@@ -60,6 +60,13 @@ LOOP:
 		i = j
 
 		switch tt[i].Type {
+		case KeywordToken:
+			switch tt[i].Str {
+			case "then", "else", "fi":
+				break LOOP
+			default:
+				log.Fatalf("unexpected keyword: %q", tt[i].Str)
+			}
 		case EndToken, CloseCurlyToken:
 			break LOOP
 		case SemiToken:
@@ -71,6 +78,37 @@ LOOP:
 	}
 
 	return &Seq{vec}, i
+}
+
+func ParseIf(lex *Lex, i int) (*Cond, int) {
+	tt := lex.Tokens
+	t := tt[i]
+
+	if_seq, j := ParseSeq(lex, i)
+	i = j
+
+	t = tt[i]
+	if t.Str != "then" {
+		log.Fatalf("expected `then` but got %q", t.Str)
+	}
+
+	i++
+	t = tt[i]
+	then_seq, j := ParseSeq(lex, i)
+	i = j
+	t = tt[i]
+	if t.Str != "else" {
+		log.Fatalf("expected `else` but got %q", t.Str)
+	}
+	i++
+	t = tt[i]
+	else_seq, j := ParseSeq(lex, i)
+	i = j
+	t = tt[i]
+	if t.Str != "fi" {
+		log.Fatalf("expected `else` but got %q", t.Str)
+	}
+	return &Cond{if_seq, then_seq, else_seq}, i + 1
 }
 
 func ParseDef(lex *Lex, i int) (*Def, int) {
@@ -161,8 +199,14 @@ LOOP:
 				def, j := ParseDef(lex, i+1)
 				vec = append(vec, def)
 				i = j
+			case "if":
+				def, j := ParseIf(lex, i+1)
+				vec = append(vec, def)
+				i = j
+			case "then", "else", "fi":
+				break LOOP
 			default:
-				panic("not yet")
+				log.Panicf("initial keyword not implemented: %q", t.Str)
 			}
 		case EndToken, CloseToken, KetToken, SemiToken, CloseCurlyToken:
 			break LOOP

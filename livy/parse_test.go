@@ -218,6 +218,10 @@ var evalTests = []srcWantPair{
 	{`def *** A { (iota1 A) ..* iota1 A } ; *** 4`, `[4 4 ]{1 2 3 4 2 4 6 8 3 6 9 12 4 8 12 16 } `},
 	{`def sum [Axis] B { +/[Axis] B } ; sum[0] 3 5 rho iota1 20`, `[5 ]{18 21 24 27 30 } `},
 	{`def sum [Axis] B { +/[Axis] B } ; sum[1] 3 5 rho iota1 20`, `[3 ]{15 40 65 } `},
+
+	// cond
+	{`Pi=3.14 ; if Pi < 3 then -10 else +10 fi + iota 3`, `[3 ]{10 11 12 } `},
+	{`Pi=3.14 ; if Pi < 4 then -10 else +10 fi + iota 3`, `[3 ]{-10 -9 -8 } `},
 }
 
 func TestEval(t *testing.T) {

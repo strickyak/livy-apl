@@ -55,6 +55,12 @@ type Def struct {
 	Locals []string
 }
 
+type Cond struct {
+	If   *Seq
+	Then *Seq
+	Else *Seq
+}
+
 type Subscript struct {
 	Var *Variable
 	Vec []Expression
@@ -146,6 +152,16 @@ func (o List) Eval(c *Context) Val {
 		vec = append(vec, e)
 	}
 	return &Mat{M: vec, S: []int{len(vec)}}
+}
+
+func (o Cond) Eval(c *Context) Val {
+	cond := o.If.Eval(c)
+	b := float2bool(cond.GetScalarFloat())
+	if b {
+		return o.Then.Eval(c)
+	} else {
+		return o.Else.Eval(c)
+	}
 }
 
 func (o Def) Eval(c *Context) Val {
@@ -356,10 +372,25 @@ func (o Def) String() string {
 	return fmt.Sprintf("Def(%q %q [%q] %q %v %v)", o.Lhs, o.Name, o.Axis, o.Rhs, o.Locals, o.Seq)
 }
 
+func (o Cond) String() string {
+	return fmt.Sprintf("Cond(if %v then %v else %v fi)", o.If, o.Then, o.Else)
+}
+
 func (o Seq) String() string {
 	return fmt.Sprintf("Seq(%#v)", o.Vec)
 }
 
 func (o Subscript) String() string {
 	return fmt.Sprintf("Sub(%s [ %#v ])", o.Var.S, o.Vec)
+}
+
+func float2bool(f float64) bool {
+	if f == 1.0 {
+		return true
+	}
+	if f == 0.0 {
+		return false
+	}
+	log.Panicf("Cannot use %.18f as a bool", f)
+	panic(0)
 }
