@@ -42,6 +42,20 @@ var StandardDyadics = map[string]DyadicFunc{
 		func(a, b float64) float64 { return math.Remainder(a, b) })),
 	"mod": WrapMatMatDyadic(WrapFloatDyadic(
 		func(a, b float64) float64 { return math.Mod(a, b) })),
+	"atan": WrapMatMatDyadic(WrapFloatDyadic(
+		func(a, b float64) float64 { return math.Atan2(a, b) })),
+	"copysign": WrapMatMatDyadic(WrapFloatDyadic(
+		func(a, b float64) float64 { return math.Copysign(a, b) })),
+	"dim": WrapMatMatDyadic(WrapFloatDyadic(
+		func(a, b float64) float64 { return math.Dim(a, b) })),
+	"hypot": WrapMatMatDyadic(WrapFloatDyadic(
+		func(a, b float64) float64 { return math.Hypot(a, b) })),
+	"isInf": WrapMatMatDyadic(WrapFloatBoolDyadic(
+		func(a, b float64) bool { return math.IsInf(a, int(b)) })),
+	"jn": WrapMatMatDyadic(WrapFloatDyadic(
+		func(a, b float64) float64 { return math.Jn(int(a), b) })),
+	"yn": WrapMatMatDyadic(WrapFloatDyadic(
+		func(a, b float64) float64 { return math.Yn(int(a), b) })),
 }
 
 var Zero = &Num{0.0}
@@ -288,26 +302,21 @@ func asMat(a Val) *Mat {
 }
 
 func dyadicRho(c *Context, a Val, b Val, axis int) Val {
-	var shape []int
-
-	am := asMat(a)
+	spec := GetVectorOfScalarInts(a)
+	outSize := mulReduce(spec)
 	bm := asMat(b)
-	if am == nil || bm == nil {
-		panic("BAD")
+
+	if outSize > 0 && bm == nil {
+		log.Panicf("Cannot resize empty matrix to shape %v", spec)
 	}
 
-	for _, e := range am.M {
-		ei := e.GetScalarInt()
-		shape = append(shape, ei)
-	}
-
-	if len(shape) == 0 {
-		return &Mat{nil, nil}
-	}
+	//if len(spec) == 0 {
+	//return &Mat{nil, nil}
+	//}
 
 	var vec []Val
-	vec, _ = recursiveFill(shape, bm.M, vec, 0)
-	return &Mat{M: vec, S: shape}
+	vec, _ = recursiveFill(spec, bm.M, vec, 0)
+	return &Mat{M: vec, S: spec}
 }
 
 func recursiveFill(shape []int, source []Val, vec []Val, i int) ([]Val, int) {

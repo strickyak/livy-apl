@@ -51,17 +51,35 @@ var StandardMonadics = map[string]MonadicFunc{
 	"exp": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Exp(b)
 	})),
-	"ln": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+	"exp2": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Exp2(b)
+	})),
+	"expm1": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Expm1(b)
+	})),
+	"log": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Log(b)
 	})),
 	"log10": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Log10(b)
+	})),
+	"log2": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Log2(b)
+	})),
+	"log1p": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Log1p(b)
 	})),
 	"ceil": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Ceil(b)
 	})),
 	"floor": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Floor(b)
+	})),
+	"round": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Round(b)
+	})),
+	"roundToEven": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.RoundToEven(b)
 	})),
 	"cbrt": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Cbrt(b)
@@ -75,6 +93,55 @@ var StandardMonadics = map[string]MonadicFunc{
 	"square": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return b * b
 	})),
+	"sgn": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		if b < 0 {
+			return -1
+		} else if b > 0 {
+			return +1
+		} else if b == 0 {
+			return 0
+		} else {
+			panic("cannot sgn")
+		}
+	})),
+	"abs": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Abs(b)
+	})),
+	"erf": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Erf(b)
+	})),
+	"erfc": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Erfc(b)
+	})),
+	"erfinv": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Erfinv(b)
+	})),
+	"erfcinv": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Erfcinv(b)
+	})),
+	"gamma": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Gamma(b)
+	})),
+	"inf": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Inf(int(b))
+	})),
+	"isNaN": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return boolf(math.IsNaN(b))
+	})),
+	"y0": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Y0(b)
+	})),
+	"y1": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return math.Y1(b)
+	})),
+}
+
+func boolf(a bool) float64 {
+	if a {
+		return 1.0
+	} else {
+		return 0.0
+	}
 }
 
 type funcFloatFloat func(b float64) float64
