@@ -12,6 +12,8 @@ var StandardDyadics = map[string]DyadicFunc{
 	"rot":  dyadicRot,
 	"take": dyadicTake,
 	"drop": dyadicDrop,
+	`/`:    dyadicCompress,
+	`\`:    dyadicExpand,
 
 	"==": WrapMatMatDyadic(WrapFloatBoolDyadic(
 		func(a, b float64) bool { return a == b })),
@@ -71,6 +73,14 @@ func init() {
 			StandardMonadics[scanName] = MkReduceOrScanOp(scanName, fn, identity, true)
 		}
 	}
+}
+
+// mod forcing positive result, since I don't actually know what Go does.
+func mod(x int, modulus int) int {
+	if modulus < 1 {
+		log.Panicf("Nonpositive modulus: %d", modulus)
+	}
+	return ((x % modulus) + modulus) % modulus
 }
 
 func MkOuterProduct(name string, fn DyadicFunc) DyadicFunc {
@@ -516,7 +526,7 @@ func dyadicRot(c *Context, a Val, b Val, axis int) Val {
 		// rot or flip on Emptiness yields Emptiness.
 		return b
 	}
-	axis = ((axis % n) + n) % n
+	axis = mod(axis, n)
 	revaxis := n - axis
 
 	// Result shape
@@ -545,7 +555,7 @@ func dyadicRot(c *Context, a Val, b Val, axis int) Val {
 			outStride := mulReduce(outShape[1:])
 			for o := 0; o < outShape[0]; o++ {
 				i := spec[o]
-				i = ((i % inShape[0]) + inShape[0]) % inShape[0]
+				i = mod(i, inShape[0])
 				recurse(inShape[1:], inOff+i*inStride,
 					outShape[1:], outOff+o*outStride)
 			}
@@ -634,5 +644,104 @@ func dyadicTakeOrDrop(c *Context, a Val, b Val, axis int, dropping bool) Val {
 		}
 	}
 	recurse(inStart, inShape, 0, outShape, 0)
+	return &Mat{M: outVec, S: outShape}
+}
+
+func dyadicExpand(c *Context, a Val, b Val, axis int) Val {
+	return dyadicExpandOrCompress(c, a, b, axis, false, `\`)
+}
+func dyadicCompress(c *Context, a Val, b Val, axis int) Val {
+	return dyadicExpandOrCompress(c, a, b, axis, true, `/`)
+}
+func dyadicExpandOrCompress(c *Context, a Val, b Val, axis int, compressing bool, name string) Val {
+	mat, ok := b.(*Mat)
+	if !ok {
+		log.Panicf("dyadic %s wants matrix on right, but got %#v", name, b)
+	}
+	inVec := mat.M
+	inShape := mat.S
+	origInRank := len(inShape)
+	axis = mod(axis, origInRank)
+	srcAxisShape := inShape[axis]
+
+	spec := GetVectorOfScalarInts(a)
+	// In the plan, 0 upwards mean copy over that source position.
+	// So these special negative numbers can mean drop (for compress) & insert (for expand).
+	const kDrop = -1
+	const kInsert = -2
+	var plan []int
+	srcPos := 0 // Counts source positions, advances on 1's.
+	destLen := 0
+	for _, a := range spec {
+		switch a {
+		case 0:
+			if compressing {
+				plan = append(plan, kDrop)
+				srcPos++
+			} else {
+				plan = append(plan, kInsert)
+				destLen++
+			}
+		case 1:
+			if srcPos == srcAxisShape {
+				log.Panicf("Dyadic %s axis is not wide enough: got LHS == %v; RHS shape is %v", name, spec, inShape)
+			}
+			plan = append(plan, srcPos)
+			srcPos++
+			destLen++
+		default:
+			log.Panicf("dyadic %s has non-boolean element on LHS: %v", name, spec)
+		}
+	}
+
+	var outShape []int
+	for i, a := range inShape {
+		if i == axis {
+			outShape = append(outShape, destLen)
+		} else {
+			outShape = append(outShape, a)
+		}
+	}
+	outVec := make([]Val, mulReduce(outShape))
+
+	var recurse func(inShape []int, inOff int, outShape []int, outOff int)
+	recurse = func(inShape []int, inOff int, outShape []int, outOff int) {
+		if len(outShape) == 0 {
+			if inOff == -1 {
+				log.Printf("ZERO %d", outOff)
+				outVec[outOff] = &Num{0.0}
+			} else {
+				log.Printf("CP %d <= %d", outOff, inOff)
+				outVec[outOff] = inVec[inOff]
+			}
+			return
+		}
+		inStride := mulReduce(inShape[1:])
+		outStride := mulReduce(outShape[1:])
+		if len(inShape)+axis == origInRank {
+			j := 0 // out index
+			for _, p := range plan {
+				switch p {
+				case kDrop:
+					break
+				case kInsert:
+					recurse(inShape[1:], -1, outShape[1:], outOff+j*outStride)
+					j++
+				default:
+					recurse(inShape[1:], inOff+p*inStride, outShape[1:], outOff+j*outStride)
+					j++
+				}
+			}
+		} else {
+			for i := 0; i < inShape[0]; i++ {
+				if inOff == -1 {
+					recurse(inShape[1:], -1, outShape[1:], outOff+i*outStride)
+				} else {
+					recurse(inShape[1:], inOff+i*inStride, outShape[1:], outOff+i*outStride)
+				}
+			}
+		}
+	}
+	recurse(inShape, 0, outShape, 0)
 	return &Mat{M: outVec, S: outShape}
 }
