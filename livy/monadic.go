@@ -8,9 +8,10 @@ import (
 type MonadicFunc func(c *Context, b Val, dim int) Val
 
 var StandardMonadics = map[string]MonadicFunc{
-	"rot":  rotMonadic,
-	"iota": iotaMonadic,
-	"rho":  rhoMonadic,
+	"rot":   rotMonadic,
+	"iota":  iotaMonadic,
+	"iota1": iota1Monadic,
+	"rho":   rhoMonadic,
 	"asin": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Asin(b)
 	})),
@@ -95,10 +96,16 @@ func doubleMonadic(c *Context, b Val) Val {
 }
 
 func iotaMonadic(c *Context, b Val, axis int) Val {
+	return iotaK(c, b, 0)
+}
+func iota1Monadic(c *Context, b Val, axis int) Val {
+	return iotaK(c, b, 1)
+}
+func iotaK(c *Context, b Val, k int) Val {
 	n := b.GetScalarInt()
 	vec := make([]Val, n)
 	for i := 0; i < n; i++ {
-		vec[i] = &Num{float64(i)}
+		vec[i] = &Num{float64(i + k)}
 	}
 	return &Mat{
 		M: vec,
