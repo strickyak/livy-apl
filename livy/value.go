@@ -61,7 +61,7 @@ func (o Char) Pretty() string {
 	return fmt.Sprintf("'%c' ", o.R)
 }
 func (o Num) Pretty() string {
-	return fmt.Sprintf("%.15f ", o.F)
+	return fmt.Sprintf("%.15g ", o.F)
 }
 func (o Mat) PrettyMatrix(vec []string) string {
 	var bb bytes.Buffer
@@ -142,7 +142,7 @@ func (o Num) GetScalarInt() int {
 }
 func (o Mat) GetScalarInt() int {
 	if len(o.M) == 1 {
-		return o.M[1].GetScalarInt()
+		return o.M[0].GetScalarInt()
 	}
 	log.Panicf("Matrix with %d entries cannot be a Scalar Int", len(o.M))
 	panic(0)
