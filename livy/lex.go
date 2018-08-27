@@ -25,7 +25,7 @@ const (
 	KeywordToken
 )
 
-const OPERATOR = `([-+*/\\,&|!=<>]+|[a-z][A-Za-z0-9_]*)`
+const OPERATOR = `([-+*/\\,&|!=<>]+|[a-z][A-Za-z0-9_]*[/\\]?)`
 const KEYWORD = `(def|if|then|elif|else|fi|while|do|done|break|continue)\b`
 
 var MatchWhite = regexp.MustCompile(`^(\s*)`).FindStringSubmatch
