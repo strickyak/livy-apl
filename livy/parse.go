@@ -62,10 +62,10 @@ LOOP:
 		switch tt[i].Type {
 		case KeywordToken:
 			switch tt[i].Str {
-			case "then", "else", "fi":
+			case "then", "else", "fi", "do", "done":
 				break LOOP
 			default:
-				log.Fatalf("unexpected keyword: %q", tt[i].Str)
+				log.Panicf("unexpected keyword: %q", tt[i].Str)
 			}
 		case EndToken, CloseCurlyToken:
 			break LOOP
@@ -73,42 +73,69 @@ LOOP:
 			i++
 			continue LOOP
 		default:
-			log.Fatalf("default: %d %s", i, tt[i])
+			log.Panicf("default: %d %s", i, tt[i])
 		}
 	}
 
 	return &Seq{vec}, i
 }
 
+func ParseWhile(lex *Lex, i int) (*While, int) {
+	tt := lex.Tokens
+	t := tt[i]
+
+	whileSeq, j := ParseSeq(lex, i)
+	i = j
+
+	t = tt[i]
+	if t.Str != "do" {
+		log.Panicf("expected `do` but got %q", t.Str)
+	}
+
+	i++
+	t = tt[i]
+	doSeq, j := ParseSeq(lex, i)
+	i = j
+	t = tt[i]
+	if t.Str != "done" {
+		log.Panicf("expected `done` but got %q", t.Str)
+	}
+	z := &While{whileSeq, doSeq}
+	log.Printf("ParseWhile returns %v", z)
+	return z, i + 1
+}
+
 func ParseIf(lex *Lex, i int) (*Cond, int) {
 	tt := lex.Tokens
 	t := tt[i]
 
-	if_seq, j := ParseSeq(lex, i)
+	ifSeq, j := ParseSeq(lex, i)
 	i = j
 
 	t = tt[i]
 	if t.Str != "then" {
-		log.Fatalf("expected `then` but got %q", t.Str)
+		log.Panicf("expected `then` but got %q", t.Str)
 	}
 
 	i++
 	t = tt[i]
-	then_seq, j := ParseSeq(lex, i)
+	thenSeq, j := ParseSeq(lex, i)
 	i = j
 	t = tt[i]
 	if t.Str != "else" {
-		log.Fatalf("expected `else` but got %q", t.Str)
+		log.Panicf("expected `else` but got %q", t.Str)
 	}
 	i++
 	t = tt[i]
-	else_seq, j := ParseSeq(lex, i)
+	elseSeq, j := ParseSeq(lex, i)
 	i = j
 	t = tt[i]
 	if t.Str != "fi" {
-		log.Fatalf("expected `else` but got %q", t.Str)
+		log.Panicf("expected `else` but got %q", t.Str)
 	}
-	return &Cond{if_seq, then_seq, else_seq}, i + 1
+	z := &Cond{ifSeq, thenSeq, elseSeq}
+	log.Printf("ParseIf returns %v", z)
+	return z, i + 1
 }
 
 func ParseDef(lex *Lex, i int) (*Def, int) {
@@ -126,7 +153,7 @@ func ParseDef(lex *Lex, i int) (*Def, int) {
 	}
 
 	if t.Type != OperatorToken {
-		log.Fatalf("expected operator after def, but got %v", t)
+		log.Panicf("expected operator after def, but got %v", t)
 	}
 	name := t.Str
 	i++
@@ -135,20 +162,20 @@ func ParseDef(lex *Lex, i int) (*Def, int) {
 		i++
 		t = tt[i]
 		if t.Type != VariableToken {
-			log.Fatalf("expected AXIS variable after def operator open-bracket, but got %v", t)
+			log.Panicf("expected AXIS variable after def operator open-bracket, but got %v", t)
 		}
 		axis = t.Str
 		locals = append(locals, axis)
 		i++
 		t = tt[i]
 		if t.Type != KetToken {
-			log.Fatalf("expected close-bracket def operator open-bracket axis, but got %v", t)
+			log.Panicf("expected close-bracket def operator open-bracket axis, but got %v", t)
 		}
 		i++
 		t = tt[i]
 	}
 	if t.Type != VariableToken {
-		log.Fatalf("expected RHS variable after def, but got %v", t)
+		log.Panicf("expected RHS variable after def, but got %v", t)
 	}
 	rhs = t.Str
 	locals = append(locals, rhs)
@@ -163,7 +190,7 @@ func ParseDef(lex *Lex, i int) (*Def, int) {
 			break
 		}
 		if t.Type != VariableToken {
-			log.Fatalf("expected local variable name after def semicolon, but got %v", t)
+			log.Panicf("expected local variable name after def semicolon, but got %v", t)
 		}
 		locals = append(locals, t.Str)
 		i++
@@ -171,7 +198,7 @@ func ParseDef(lex *Lex, i int) (*Def, int) {
 	}
 
 	if t.Type != OpenCurlyToken {
-		log.Fatalf("expected open-curly-brace after operator after def, but got %v", t)
+		log.Panicf("expected open-curly-brace after operator after def, but got %v", t)
 	}
 	i++
 
@@ -180,7 +207,7 @@ func ParseDef(lex *Lex, i int) (*Def, int) {
 	t = tt[i]
 
 	if t.Type != CloseCurlyToken {
-		log.Fatalf("expected close-curly-brace after operator after def, but got %v", t)
+		log.Panicf("expected close-curly-brace after operator after def, but got %v", t)
 	}
 	i++
 	return &Def{name, seq, lhs, axis, rhs, locals}, i
@@ -192,18 +219,29 @@ func ParseExpr(lex *Lex, i int) (z Expression, zi int) {
 LOOP:
 	for {
 		t := tt[i]
+		log.Printf("........ [%d] %q %v", i, t.Str, t)
 		switch t.Type {
 		case KeywordToken:
 			switch t.Str {
+			case "break":
+				vec = append(vec, BREAK)
+				i++
+			case "continue":
+				vec = append(vec, CONTINUE)
+				i++
 			case "def":
 				def, j := ParseDef(lex, i+1)
 				vec = append(vec, def)
 				i = j
 			case "if":
-				def, j := ParseIf(lex, i+1)
-				vec = append(vec, def)
+				cond, j := ParseIf(lex, i+1)
+				vec = append(vec, cond)
 				i = j
-			case "then", "else", "fi":
+			case "while":
+				while, j := ParseWhile(lex, i+1)
+				vec = append(vec, while)
+				i = j
+			case "then", "else", "fi", "do", "done":
 				break LOOP
 			default:
 				log.Panicf("initial keyword not implemented: %q", t.Str)
@@ -227,7 +265,9 @@ LOOP:
 				i = j // Don't add 1 here; ParseExpr just below gets i+1.
 			}
 
+			log.Printf("===== PE [%d]", i+1)
 			b, j := ParseExpr(lex, i+1)
+			log.Printf("===== PE [%d] --> %v %d", i+1, b, j)
 			switch len(vec) {
 			case 0:
 				return &Monad{t, t.Str, b, axis}, j
@@ -261,13 +301,16 @@ LOOP:
 			vec = append(vec, b)
 			i = j + 1
 		default:
-			log.Fatalf("bad default: %d", t.Type)
+			log.Panicf("bad default: %d", t.Type)
 		}
 	}
 
+	if len(vec) == 0 {
+		log.Panicf("Error parsing expression; perhaps an operator followed by no expression: %q %q", tt[i-1].Str, tt[i].Str)
+	}
 	if len(vec) > 1 {
 		return &List{vec}, i
 	}
-	log.Printf("VEC=%v", vec)
+	log.Printf("ParseExpr returns VEC=%v; i=%d", vec, i)
 	return vec[0], i
 }

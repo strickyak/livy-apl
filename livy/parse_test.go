@@ -222,6 +222,15 @@ var evalTests = []srcWantPair{
 	// cond
 	{`Pi=3.14 ; if Pi < 3 then -10 else +10 fi + iota 3`, `[3 ]{10 11 12 } `},
 	{`Pi=3.14 ; if Pi < 4 then -10 else +10 fi + iota 3`, `[3 ]{-10 -9 -8 } `},
+
+	// while
+	{`S=0 ; N=6; Z = (while N>0 do S = N + S ; N = N - 1; iota S  done ) ; S`, `21 `},
+	{`S=0 ; N=8; Z = (while N>0 do S = N + S ; N = N - 1; if S>26 then break else  S fi  done ) ; S`, `30 `},
+
+	// and or xor
+	{`1 1 0 0 and 1 0 1 0 `, `[4 ]{1 0 0 0 } `},
+	{`1 1 0 0 or 1 0 1 0 `, `[4 ]{1 1 1 0 } `},
+	{`1 1 0 0 xor 1 0 1 0 `, `[4 ]{0 1 1 0 } `},
 }
 
 func TestEval(t *testing.T) {

@@ -61,6 +61,11 @@ type Cond struct {
 	Else *Seq
 }
 
+type While struct {
+	While *Seq
+	Do    *Seq
+}
+
 type Subscript struct {
 	Var *Variable
 	Vec []Expression
@@ -162,6 +167,55 @@ func (o Cond) Eval(c *Context) Val {
 	} else {
 		return o.Else.Eval(c)
 	}
+}
+
+type Break struct{}
+type Continue struct{}
+
+var BREAK Break
+var CONTINUE Continue
+
+func (Break) Eval(c *Context) Val {
+	panic(BREAK)
+}
+func (Continue) Eval(c *Context) Val {
+	panic(CONTINUE)
+}
+func (o While) Eval(c *Context) Val {
+	var z []Val
+	for {
+		cond := o.While.Eval(c)
+		b := float2bool(cond.GetScalarFloat())
+		if !b {
+			break
+		}
+
+		var doBreak bool
+		item := func() Val {
+			defer func() {
+				r := recover()
+				switch r.(type) {
+				case nil:
+					return
+				case Break:
+					doBreak = true
+					return
+				case Continue:
+					return
+				default:
+					panic(r)
+				}
+			}()
+			return o.Do.Eval(c)
+		}()
+		if doBreak {
+			break
+		}
+		if item != nil {
+			z = append(z, item)
+		}
+	}
+	return &Mat{z, []int{len(z)}}
 }
 
 func (o Def) Eval(c *Context) Val {
@@ -376,6 +430,18 @@ func (o Cond) String() string {
 	return fmt.Sprintf("Cond(if %v then %v else %v fi)", o.If, o.Then, o.Else)
 }
 
+func (o While) String() string {
+	return fmt.Sprintf("While(while %v do %v done)", o.While, o.Do)
+}
+
+func (o Break) String() string {
+	return fmt.Sprintf("Break")
+}
+
+func (o Continue) String() string {
+	return fmt.Sprintf("Continue")
+}
+
 func (o Seq) String() string {
 	return fmt.Sprintf("Seq(%#v)", o.Vec)
 }
@@ -391,6 +457,6 @@ func float2bool(f float64) bool {
 	if f == 0.0 {
 		return false
 	}
-	log.Panicf("Cannot use %.18f as a bool", f)
+	log.Panicf("Cannot use %.18g as a bool", f)
 	panic(0)
 }

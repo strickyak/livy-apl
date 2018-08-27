@@ -26,7 +26,7 @@ const (
 )
 
 const OPERATOR = `([-+*/\\,&|!=<>]+|[a-z][A-Za-z0-9_]*)`
-const KEYWORD = `(def|if|then|elif|else|fi)\b`
+const KEYWORD = `(def|if|then|elif|else|fi|while|do|done|break|continue)\b`
 
 var MatchWhite = regexp.MustCompile(`^(\s*)`).FindStringSubmatch
 var MatchNumber = regexp.MustCompile(`^([-+]?[0-9]+([.][0-9]+)?([eE][-+]?[0-9]+)?)`).FindStringSubmatch
