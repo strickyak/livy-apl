@@ -97,27 +97,33 @@ func main() {
 			continue
 		}
 
+		if strings.HasPrefix(line, ")") {
+			c.Command(line[1:])
+			continue
+		}
+
 		result, complaint := EvalString(c, line)
 		if complaint != nil {
-			fmt.Fprintf(os.Stderr, "*** ERROR *** %s\n", complaint)
-		} else {
-			name := fmt.Sprintf("_%d", i)
-			c.Globals[name] = result
-			c.Globals["_"] = result
-			if *Raw {
-				fmt.Fprintf(os.Stdout, "%s = %s\n", name, result)
-			} else {
-				bb := bytes.NewBuffer(nil)
-				shape := result.Shape()
-				if len(shape) > 0 {
-					for _, x := range shape {
-						fmt.Fprintf(bb, "%d ", x)
-					}
-					fmt.Fprintf(bb, "rho")
-				}
-				fmt.Fprintf(os.Stdout, "%s = %s\n%s\n", name, bb.String(), result.Pretty())
-			}
-			i++
+			fmt.Fprintf(os.Stderr, "****** ERROR: %s\n", complaint)
+			continue
 		}
+
+		name := fmt.Sprintf("_%d", i)
+		c.Globals[name] = result
+		c.Globals["_"] = result
+		if *Raw {
+			fmt.Fprintf(os.Stdout, "%s = %s\n", name, result)
+		} else {
+			bb := bytes.NewBuffer(nil)
+			shape := result.Shape()
+			if len(shape) > 0 {
+				for _, x := range shape {
+					fmt.Fprintf(bb, "%d ", x)
+				}
+				fmt.Fprintf(bb, "rho")
+			}
+			fmt.Fprintf(os.Stdout, "%s = %s\n%s\n", name, bb.String(), result.Pretty())
+		}
+		i++
 	}
 }
