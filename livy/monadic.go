@@ -134,6 +134,13 @@ var StandardMonadics = map[string]MonadicFunc{
 	"y1": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Y1(b)
 	})),
+	"neg": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		return -b
+	})),
+	"not": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+		x := float2bool(b)
+		return boolf(!x)
+	})),
 }
 
 func boolf(a bool) float64 {
