@@ -8,6 +8,7 @@ import (
 type MonadicFunc func(c *Context, b Val, dim int) Val
 
 var StandardMonadics = map[string]MonadicFunc{
+	",":     ravelMonadic,
 	"rot":   rotMonadic,
 	"iota":  iotaMonadic,
 	"iota1": iota1Monadic,
@@ -167,6 +168,16 @@ func doubleMonadic(c *Context, b Val) Val {
 	}
 	log.Panicf("Wrong type for monadic `double`: %T %q", b, b)
 	return nil
+}
+
+func ravelMonadic(c *Context, b Val, axis int) Val {
+	mat, ok := b.(*Mat)
+	if ok {
+		// Grab ravelled guts from the matrix.
+		return &Mat{mat.M, []int{len(mat.M)}}
+	}
+	// Singleton vector.
+	return &Mat{[]Val{b}, []int{1}}
 }
 
 func iotaMonadic(c *Context, b Val, axis int) Val {
