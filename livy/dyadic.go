@@ -27,6 +27,9 @@ var StandardDyadics = map[string]DyadicFunc{
 		func(a, b float64) bool { return a <= b })),
 	">=": WrapMatMatDyadic(WrapFloatBoolDyadic(
 		func(a, b float64) bool { return a >= b })),
+	"and": WrapMatMatDyadic(WrapFloatBoolDyadic(ffand)),
+	"or":  WrapMatMatDyadic(WrapFloatBoolDyadic(ffor)),
+	"xor": WrapMatMatDyadic(WrapFloatBoolDyadic(ffxor)),
 
 	"+": WrapMatMatDyadic(WrapFloatDyadic(
 		func(a, b float64) float64 { return a + b })),
@@ -95,6 +98,26 @@ func mod(x int, modulus int) int {
 		log.Panicf("Nonpositive modulus: %d", modulus)
 	}
 	return ((x % modulus) + modulus) % modulus
+}
+
+func ffand(a, b float64) bool {
+	x := float2bool(a)
+	y := float2bool(b)
+	return x && y
+}
+func ffor(a, b float64) bool {
+	x := float2bool(a)
+	y := float2bool(b)
+	return x || y
+}
+func ffxor(a, b float64) bool {
+	x := float2bool(a)
+	y := float2bool(b)
+	return xor(x, y)
+	if x {
+		return !y
+	}
+	return y
 }
 
 func MkOuterProduct(name string, fn DyadicFunc) DyadicFunc {
