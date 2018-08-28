@@ -8,11 +8,12 @@ import (
 type MonadicFunc func(c *Context, b Val, dim int) Val
 
 var StandardMonadics = map[string]MonadicFunc{
-	",":     ravelMonadic,
-	"rot":   rotMonadic,
-	"iota":  iotaMonadic,
-	"iota1": iota1Monadic,
-	"rho":   rhoMonadic,
+	"transpose": transposeMonadic,
+	",":         ravelMonadic,
+	"rot":       rotMonadic,
+	"iota":      iotaMonadic,
+	"iota1":     iota1Monadic,
+	"rho":       rhoMonadic,
 	"asin": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Asin(b)
 	})),
@@ -265,4 +266,32 @@ func rotMonadic(c *Context, b Val, axis int) Val {
 		reversed = append(reversed, &Num{float64(i)})
 	}
 	return dyadicRot(c, &Mat{reversed, []int{axisLen}}, b, axis)
+}
+
+func transposeMonadic(c *Context, b Val, axis int) Val {
+	mat, ok := b.(*Mat)
+	if !ok {
+		log.Panicf("Monadic `transpose` needs matrix on right, but got %v", b)
+	}
+
+	shape := mat.S
+	rank := len(shape)
+	if rank < 2 {
+		log.Panicf("Monadic `transpose` needs matrix with rank >= 2, but got shape %v", shape)
+	}
+
+	var spec []Val
+	for i := 0; i < rank; i++ {
+		switch mod(i, rank) {
+		case mod(rank+axis, rank):
+			spec = append(spec, &Num{float64(mod(i-1, rank))})
+		case mod(rank+axis-1, rank):
+			spec = append(spec, &Num{float64(mod(i+1, rank))})
+		default:
+			spec = append(spec, &Num{float64(mod(i, rank))})
+		}
+	}
+	lhs := &Mat{spec, []int{len(spec)}}
+
+	return dyadicTranspose(c, lhs, b, -1)
 }
