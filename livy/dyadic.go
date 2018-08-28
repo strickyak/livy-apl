@@ -8,13 +8,14 @@ import (
 type DyadicFunc func(c *Context, a Val, b Val, axis int) Val
 
 var StandardDyadics = map[string]DyadicFunc{
-	",":    dyadicCatenate,
-	"rho":  dyadicRho,
-	"rot":  dyadicRot,
-	"take": dyadicTake,
-	"drop": dyadicDrop,
-	`/`:    dyadicCompress,
-	`\`:    dyadicExpand,
+	"transpose": dyadicTranspose,
+	",":         dyadicCatenate,
+	"rho":       dyadicRho,
+	"rot":       dyadicRot,
+	"take":      dyadicTake,
+	"drop":      dyadicDrop,
+	`/`:         dyadicCompress,
+	`\`:         dyadicExpand,
 
 	"==": WrapMatMatDyadic(WrapFloatBoolDyadic(
 		func(a, b float64) bool { return a == b })),
@@ -837,6 +838,71 @@ func dyadicCatenate(c *Context, a Val, b Val, axis int) Val {
 
 	inVec = bVec
 	recurse(bShape, 0, outShape, aShape[axis]*mulReduce(outShape[axis+1:]))
+
+	return &Mat{M: outVec, S: outShape}
+}
+
+func dyadicTranspose(c *Context, a Val, b Val, axis int) Val {
+
+	mat, ok := b.(*Mat)
+	if !ok {
+		log.Panicf("Dyadic `transpose` wants matrix on right, but got %#v", b)
+	}
+
+	inVec := mat.M
+	inShape := mat.S
+	inRank := len(inShape)
+
+	spec := GetVectorOfScalarInts(a)
+	for i := range spec {
+		spec[i] = mod(spec[i], inRank)
+	}
+
+	var outShape []int
+	for _, e := range spec {
+		k := mod(e, inRank)
+		outShape = append(outShape, inShape[k])
+	}
+	outRank := len(outShape)
+	var inStrides []int
+	for i, _ := range inShape {
+		inStrides = append(inStrides, mulReduce(inShape[i+1:]))
+	}
+	var outStrides []int
+	for i, _ := range outShape {
+		outStrides = append(outStrides, mulReduce(outShape[i+1:]))
+	}
+	outVec := make([]Val, mulReduce(outShape))
+
+	// TODO: something about diagonals?
+
+	current := make([]int, outRank)
+
+	var recurse func(outShape []int, outOff int)
+	recurse = func(outShape []int, outOff int) {
+		if len(outShape) == 0 {
+			// Compute inOff from scratch.
+			inOff := 0
+			for i, _ := range current {
+				inOff += current[i] * inStrides[i]
+			}
+
+			outVec[outOff] = inVec[inOff]
+			return
+		}
+
+		outStride := mulReduce(outShape[1:])
+		level := outRank - len(outShape)
+		// log.Printf("outShape=%v   outOff=%d   outStride=%d", outShape, outOff, outStride)
+		// log.Printf("outRank=%d - lenOutShape=%d  -->   level=%d", outRank, len(outShape), level)
+		// log.Printf("spec=%v   current=%v ", spec, current)
+		for i := 0; i < outShape[0]; i++ {
+			current[spec[level]] = i
+			// log.Printf("spec=%v   current=%v  [i=%d]", spec, current, i)
+			recurse(outShape[1:], outOff+i*outStride)
+		}
+	}
+	recurse(outShape, 0)
 
 	return &Mat{M: outVec, S: outShape}
 }
