@@ -3,11 +3,13 @@ package livy
 import (
 	"log"
 	"math"
+	"sort"
 )
 
 type DyadicFunc func(c *Context, a Val, b Val, axis int) Val
 
 var StandardDyadics = map[string]DyadicFunc{
+	"member":    dyadicMember,
 	"transpose": dyadicTranspose,
 	",":         dyadicCatenate,
 	"rho":       dyadicRho,
@@ -843,7 +845,6 @@ func dyadicCatenate(c *Context, a Val, b Val, axis int) Val {
 }
 
 func dyadicTranspose(c *Context, a Val, b Val, axis int) Val {
-
 	mat, ok := b.(*Mat)
 	if !ok {
 		log.Panicf("Dyadic `transpose` wants matrix on right, but got %#v", b)
@@ -905,4 +906,73 @@ func dyadicTranspose(c *Context, a Val, b Val, axis int) Val {
 	recurse(outShape, 0)
 
 	return &Mat{M: outVec, S: outShape}
+}
+
+/*
+type ValSlice []*Val
+
+func (p ValSlice) Len() int {
+	return len(p)
+}
+
+func (p ValSlice) Less(i, j int) bool {
+	na, ok := a.(*Num)
+	if !ok {
+		log.Panicf("Expected a number, but got %#v", a)
+	}
+
+	nb, ok := b.(*Num)
+	if !ok {
+		log.Panicf("Expected a number, but got %#v", b)
+	}
+
+	return na.F < nb.F
+}
+
+func (p ValSlice) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+*/
+
+func dyadicMember(c *Context, a Val, b Val, axis int) Val {
+	// TODO: allow scalar, particularly on LHS.
+	// TODO: value.go should compare any Val, not just *Num.
+	mata, ok := a.(*Mat)
+	if !ok {
+		log.Panicf("Dyadic `member` wants matrix on left, but got %#v", a)
+	}
+
+	matb, ok := b.(*Mat)
+	if !ok {
+		log.Panicf("Dyadic `member` wants matrix on right, but got %#v", b)
+	}
+
+	aVec := mata.M
+	aShape := mata.S
+	outShape := aShape
+	outVec := make([]Val, len(aVec))
+
+	bVec := matb.M
+	floats := make(sort.Float64Slice, len(bVec))
+	for i, e := range bVec {
+		num, ok := e.(*Num)
+		if !ok {
+			log.Panicf("Dyadic `member` RHS element @%d not a number: %v", i, e)
+		}
+		floats[i] = num.F
+	}
+	floats.Sort()
+
+	for i, e := range aVec {
+		num, ok := e.(*Num)
+		if !ok {
+			log.Panicf("Dyadic `member` RHS element @%d not a number: %v", i, e)
+		}
+		j := sort.SearchFloat64s(floats, num.F)
+
+		found := (j < len(floats) && floats[j] == num.F)
+		outVec[i] = &Num{boolf(found)}
+	}
+
+	return &Mat{outVec, outShape}
 }
