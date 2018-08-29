@@ -3,11 +3,14 @@ package livy
 import (
 	"log"
 	"math"
+	"sort"
 )
 
 type MonadicFunc func(c *Context, b Val, dim int) Val
 
 var StandardMonadics = map[string]MonadicFunc{
+	"up":        monadicUp,
+	"down":      monadicDown,
 	"transpose": transposeMonadic,
 	",":         ravelMonadic,
 	"rot":       rotMonadic,
@@ -294,4 +297,57 @@ func transposeMonadic(c *Context, b Val, axis int) Val {
 	lhs := &Mat{spec, []int{len(spec)}}
 
 	return dyadicTranspose(c, lhs, b, -1)
+}
+
+type IndexedValSlice struct {
+	Vals []Val
+	Ints []int
+}
+
+func (p IndexedValSlice) Len() int {
+	return len(p.Vals)
+}
+
+func (p IndexedValSlice) Less(i, j int) bool {
+	return Compare(p.Vals[p.Ints[i]], p.Vals[p.Ints[j]]) < 0
+}
+
+func (p *IndexedValSlice) Swap(i, j int) {
+	p.Ints[i], p.Ints[j] = p.Ints[j], p.Ints[i]
+}
+
+func monadicUp(c *Context, b Val, axis int) Val {
+	return monadicUpDown(c, b, false, "up")
+}
+func monadicDown(c *Context, b Val, axis int) Val {
+	return monadicUpDown(c, b, true, "down")
+}
+func monadicUpDown(c *Context, b Val, reverse bool, name string) Val {
+	mat, ok := b.(*Mat)
+	if !ok {
+		log.Panicf("monadic `%s` wants matrix, got %v", name, b)
+	}
+	if len(mat.S) != 1 {
+		log.Panicf("monadic `%s` wants matrix of rank 1, got %v", name, b)
+	}
+
+	n := mat.S[0]
+	ints := make([]int, n)
+	for i := range ints {
+		ints[i] = i
+	}
+
+	sorter := &IndexedValSlice{Vals: mat.M, Ints: ints}
+	sort.Sort(sorter)
+
+	var outVec []Val
+	for i := 0; i < n; i++ {
+		j := i
+		if reverse {
+			j = n - 1 - i
+		}
+		outVec = append(outVec, &Num{float64(ints[j])})
+	}
+
+	return &Mat{outVec, []int{n}}
 }

@@ -4,9 +4,21 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"reflect"
+)
+
+type ValEnum int
+
+const (
+	CharVal ValEnum = iota + 1
+	NumVal
+	MatVal
+	BoxVal
 )
 
 type Val interface {
+	Compare(Val) int
+	ValEnum() ValEnum
 	String() string
 	Pretty() string
 	Size() int
@@ -224,4 +236,104 @@ func (o Mat) Ravel() []Val {
 }
 func (o Box) Ravel() []Val {
 	return []Val{o}
+}
+
+func (o Char) ValEnum() ValEnum {
+	return CharVal
+}
+func (o Num) ValEnum() ValEnum {
+	return NumVal
+}
+func (o Mat) ValEnum() ValEnum {
+	return MatVal
+}
+func (o Box) ValEnum() ValEnum {
+	return BoxVal
+}
+
+func (a Char) Compare(x Val) int {
+	b, ok := x.(*Char)
+	if !ok {
+		log.Panicf("Char::Compare to not-a-Char: %#v", x)
+	}
+	switch {
+	case a.R < b.R:
+		return -1
+	case a.R == b.R:
+		return 0
+	case a.R > b.R:
+		return +1
+	}
+	panic("NOT_REACHED")
+}
+func (a Num) Compare(x Val) int {
+	b, ok := x.(*Num)
+	if !ok {
+		log.Panicf("Num::Compare to not-a-Num: %v", x)
+	}
+	switch {
+	case a.F < b.F:
+		return -1
+	case a.F == b.F:
+		return 0
+	case a.F > b.F:
+		return +1
+	}
+	panic("NOT_REACHED")
+}
+func (a Mat) Compare(x Val) int {
+	b, ok := x.(*Mat)
+	if !ok {
+		log.Panicf("Mat::Compare to not-a-Mat: %v", x)
+	}
+	switch {
+	case len(a.S) < len(b.S):
+		return -1
+	case len(a.S) > len(b.S):
+		return +1
+	}
+	for i := range a.S {
+		switch {
+		case a.S[i] < b.S[i]:
+			return -1
+		case a.S[i] > b.S[i]:
+			return +1
+		}
+	}
+	for i := range a.M {
+		cmp := a.M[i].Compare(b.M[i])
+		if cmp != 0 {
+			return cmp
+		}
+	}
+	return 0
+}
+func (a Box) Compare(x Val) int {
+	b, ok := x.(*Box)
+	if !ok {
+		log.Panicf("Box::Compare to not-a-Box: %v", x)
+	}
+	aa := reflect.ValueOf(a).Pointer()
+	bb := reflect.ValueOf(b).Pointer()
+	switch {
+	case aa < bb:
+		return -1
+	case aa == bb:
+		return 0
+	case aa > bb:
+		return +1
+	}
+	panic("NOT_REACHED")
+}
+
+func Compare(a, b Val) int {
+	ae := a.ValEnum()
+	be := b.ValEnum()
+	if ae < be {
+		return -1
+	}
+	if ae > be {
+		return +1
+	}
+	return a.Compare(b)
 }
