@@ -10,9 +10,13 @@ type DyadicFunc func(c *Context, a Val, b Val, axis int) Val
 
 var StandardDyadics = map[string]DyadicFunc{
 	"member":    dyadicMember,
+	"e":    dyadicMember,
+
+	"rho":       dyadicRho,
+	"p":       dyadicRho,
+
 	"transpose": dyadicTranspose,
 	",":         dyadicCatenate,
-	"rho":       dyadicRho,
 	"rot":       dyadicRot,
 	"take":      dyadicTake,
 	"drop":      dyadicDrop,
