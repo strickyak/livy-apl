@@ -288,18 +288,28 @@ LOOP:
 			i++
 			if tt[i].Type == BraToken {
 				log.Printf("B1")
-				v, j := ParseBracket(lex, i)
-				log.Printf("B2 %d %s", j, v)
-				vec = append(vec, &Subscript{variable, v})
+				subs, j := ParseBracket(lex, i)
+				log.Printf("B2 %d %s", j, subs)
+				vec = append(vec, &Subscript{variable, subs})
 				log.Printf("B3 %s", vec)
 				i = j
 			} else {
 				vec = append(vec, variable)
 			}
 		case OpenToken:
-			b, j := ParseExpr(lex, i+1)
-			vec = append(vec, b)
+			expr, j := ParseExpr(lex, i+1)
 			i = j + 1
+			// Allow brackets after parens e.g. (iota1 10)[2 4 6]
+			if tt[i].Type == BraToken {
+				log.Printf("B1")
+				subs, j := ParseBracket(lex, i)
+				log.Printf("B2 %d %s", j, subs)
+				vec = append(vec, &Subscript{expr, subs})
+				log.Printf("B3 %s", vec)
+				i = j
+			} else {
+				vec = append(vec, expr)
+			}
 		default:
 			log.Panicf("bad default: %d", t.Type)
 		}

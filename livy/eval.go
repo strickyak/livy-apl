@@ -67,7 +67,7 @@ type While struct {
 }
 
 type Subscript struct {
-	Var *Variable
+	Matrix Expression
 	Vec []Expression
 }
 
@@ -279,14 +279,14 @@ func (o Seq) Eval(c *Context) Val {
 }
 
 func (o Subscript) Eval(c *Context) Val {
-	v := o.Var.Eval(c)
-	mat, ok := v.(*Mat)
+	lhs := o.Matrix.Eval(c)
+	mat, ok := lhs.(*Mat)
 	if !ok {
-		log.Panicf("Cannot subscript non-matrix: %s", v)
+		log.Panicf("Cannot subscript non-matrix: %s", lhs)
 	}
 	rank := len(mat.S)
 	if len(o.Vec) != rank {
-		log.Panicf("Number of subscripts %d does not match rank %d of matrix: %s", len(o.Vec), rank, v)
+		log.Panicf("Number of subscripts %d does not match rank %d of matrix: %s", len(o.Vec), rank, lhs)
 	}
 
 	var newShape []int
@@ -315,15 +315,15 @@ func (o Subscript) Eval(c *Context) Val {
 	return newMat
 }
 func (o Subscript) Assign(c *Context, a Val) Val {
-	v := o.Var.Eval(c)
-	mat, ok := v.(*Mat)
+	lhs := o.Matrix.Eval(c)
+	mat, ok := lhs.(*Mat)
 	if !ok {
-		log.Panicf("Cannot subscript non-matrix: %s", v)
+		log.Panicf("Cannot subscript non-matrix: %s", lhs)
 	}
 
 	rank := len(mat.S)
 	if len(o.Vec) != rank {
-		log.Panicf("Number of subscripts %d does not match rank %d of matrix: %s", len(o.Vec), rank, v)
+		log.Panicf("Number of subscripts %d does not match rank %d of matrix: %s", len(o.Vec), rank, lhs)
 	}
 
 	// Replace mat with a copy, that can be modified.
@@ -447,7 +447,7 @@ func (o Seq) String() string {
 }
 
 func (o Subscript) String() string {
-	return fmt.Sprintf("Sub(%s [ %#v ])", o.Var.S, o.Vec)
+	return fmt.Sprintf("Sub(%v [ %v ])", o.Matrix, o.Vec)
 }
 
 func float2bool(f float64) bool {
