@@ -19,9 +19,9 @@ var StandardMonadics = map[string]MonadicFunc{
 	"rho":       rhoMonadic,
 
 	// Abbreviations for iota & rho are i & p
-	"i":      iotaMonadic,
-	"i1":     iota1Monadic,
-	"p":       rhoMonadic,
+	"i":  iotaMonadic,
+	"i1": iota1Monadic,
+	"p":  rhoMonadic,
 
 	"asin": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Asin(b)
