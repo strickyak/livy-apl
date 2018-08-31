@@ -68,7 +68,7 @@ type While struct {
 
 type Subscript struct {
 	Matrix Expression
-	Vec []Expression
+	Vec    []Expression
 }
 
 func (o Variable) Eval(c *Context) Val {
@@ -96,15 +96,22 @@ func (o Monad) Eval(c *Context) Val {
 	log.Printf("Monad:Eval %s %s -> %s", o.Op, b, z)
 	return z
 }
+
 func (o Dyad) Assign(c *Context) Val {
-	avar, ok := o.A.(*Variable)
-	if !ok {
-		log.Panicf("cannot assign to %s", o.A)
-	}
 	b := o.B.Eval(c)
-	c.Globals[avar.S] = b
-	log.Printf("Assigning %s = %s", avar.S, b)
-	return b
+	switch t := o.A.(type) {
+	case *Subscript:
+		return t.Assign(c, b)
+
+	case *Variable:
+		c.Globals[t.S] = b
+		log.Printf("Assigning %s = %s", t.S, b)
+		return b
+
+	default:
+		log.Panicf("cannot assign to %s", o.A)
+		panic(0)
+	}
 }
 func (o Dyad) Eval(c *Context) Val {
 	if o.Op == "=" {
@@ -278,9 +285,10 @@ func (o Seq) Eval(c *Context) Val {
 	return z
 }
 
-func (o Subscript) Eval(c *Context) Val {
+func (o Subscript) PreEval(c *Context) (mat *Mat, newShape []int, subscripts [][]int) {
+	var ok bool
 	lhs := o.Matrix.Eval(c)
-	mat, ok := lhs.(*Mat)
+	mat, ok = lhs.(*Mat)
 	if !ok {
 		log.Panicf("Cannot subscript non-matrix: %s", lhs)
 	}
@@ -289,8 +297,6 @@ func (o Subscript) Eval(c *Context) Val {
 		log.Panicf("Number of subscripts %d does not match rank %d of matrix: %s", len(o.Vec), rank, lhs)
 	}
 
-	var newShape []int
-	var subscripts [][]int
 	for i, sub := range o.Vec {
 		if sub == nil {
 			// For missing subscripts, use entire range available in mat's shape.
@@ -306,7 +312,10 @@ func (o Subscript) Eval(c *Context) Val {
 			subscripts = append(subscripts, ints)
 		}
 	}
-
+	return mat, newShape, subscripts
+}
+func (o Subscript) Eval(c *Context) Val {
+	mat, newShape, subscripts := o.PreEval(c)
 	newSize := mulReduce(newShape)
 	newMat := &Mat{M: make([]Val, newSize), S: newShape}
 	if len(newShape) > 0 {
@@ -314,33 +323,43 @@ func (o Subscript) Eval(c *Context) Val {
 	}
 	return newMat
 }
-func (o Subscript) Assign(c *Context, a Val) Val {
-	lhs := o.Matrix.Eval(c)
-	mat, ok := lhs.(*Mat)
+func (o Subscript) Assign(c *Context, b Val) Val {
+	bmat, ok := b.(*Mat)
 	if !ok {
-		log.Panicf("Cannot subscript non-matrix: %s", lhs)
+		log.Panicf("Cannot assign non-matrix to subscripted variable: %v", b)
 	}
 
-	rank := len(mat.S)
+	avar, ok := o.Matrix.(*Variable)
+	if !ok {
+		log.Panicf("Cannot assign to subscripted non-variable: %s", o.Matrix)
+	}
+
+	aval := avar.Eval(c)
+	amat, ok := aval.(*Mat)
+	if !ok {
+		log.Panicf("Cannot assign to subscripted non-matrix variable: %s", amat)
+	}
+
+	rank := len(amat.S)
 	if len(o.Vec) != rank {
-		log.Panicf("Number of subscripts %d does not match rank %d of matrix: %s", len(o.Vec), rank, lhs)
+		log.Panicf("Number of subscripts %d does not match rank %d of matrix: %s", len(o.Vec), rank, aval)
 	}
 
 	// Replace mat with a copy, that can be modified.
-	matM := make([]Val, len(mat.M)) // Alloc new contents.
-	copy(matM, mat.M)               // Copy the contents.
-	mat = &Mat{matM, mat.S}         // New mat with new contents.  Shape is immutable and can be shared.
+	matM := make([]Val, len(amat.M)) // Alloc new contents.
+	copy(matM, amat.M)               // Copy the contents.
+	mat := &Mat{matM, amat.S}        // New mat with newly copied contents.  Shape is immutable and can be shared.
 
-	var newShape []int
+	//var newShape []int
 	var subscripts [][]int
 	for i, sub := range o.Vec {
 		if sub == nil {
 			// For missing subscripts, use entire range available in mat's shape.
 			subscripts = append(subscripts, intRange(mat.S[i]))
-			newShape = append(newShape, mat.S[i])
+			//newShape = append(newShape, mat.S[i])
 		} else {
 			r := sub.Eval(c).Ravel()
-			newShape = append(newShape, len(r))
+			//newShape = append(newShape, len(r))
 			ints := make([]int, len(r))
 			for i, e := range r {
 				ints[i] = e.GetScalarInt()
@@ -349,16 +368,24 @@ func (o Subscript) Assign(c *Context, a Val) Val {
 		}
 	}
 
-	// TODO zzzzzzzzzzzzzzzzz TODO
-
-	/*
-		newSize := mulReduce(newShape) // Now this is the size of a, that we assign from.
-		newMat := &Mat{M: make([]Val, newSize), S: newShape}
-		if len(newShape) > 0 {
-			copyIntoSubscriptedMatrix(newShape, subscripts, 0, mat, mat.S, newMat.M, 0)
+	oldOff := 0
+	var recurse func(subscripts [][]int, newShape []int, newOff int)
+	recurse = func(subscripts [][]int, newShape []int, newOff int) {
+		log.Printf("subscripts=%v newShape=%v newOff=%d oldOff=%d", subscripts, newShape, newOff, oldOff)
+		if len(newShape) == 0 {
+			matM[newOff] = bmat.M[oldOff]
+			oldOff++
+			return
 		}
-	*/
-	return a
+		newStride := mulReduce(newShape[1:])
+		for _, j := range subscripts[0] {
+			recurse(subscripts[1:], newShape[1:], newOff+j*newStride)
+		}
+
+	}
+	recurse(subscripts, amat.S, 0)
+	c.Globals[avar.S] = mat
+	return b
 }
 
 func copyIntoSubscriptedMatrix(shape []int, subscripts [][]int, subOffset int, mat *Mat, matShape []int, z []Val, offset int) {
