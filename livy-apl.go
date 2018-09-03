@@ -127,7 +127,7 @@ func main() {
 				}
 				fmt.Fprintf(bb, "rho")
 			}
-			fmt.Fprintf(os.Stdout, "%s = %s\n%s\n", name, bb.String(), result.Pretty())
+			fmt.Fprintf(os.Stdout, "   %s = %s\n%s\n", name, bb.String(), result.Pretty())
 		}
 		i++
 	}
