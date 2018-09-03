@@ -252,7 +252,7 @@ LOOP:
 			log.Panicf("Unexpected `[` at position %d: %s", t.Pos, lex.Source)
 		case OpenCurlyToken:
 			log.Panicf("Unexpected `{` at position %d: %s", t.Pos, lex.Source)
-		case InnerProductToken, OuterProductToken, OperatorToken:
+		case ScanToken, ReduceToken, InnerProductToken, OuterProductToken, OperatorToken:
 			axis := Expression(nil)
 			var j int
 			if tt[i+1].Type == BraToken {

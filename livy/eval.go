@@ -82,10 +82,38 @@ func (o Number) Eval(c *Context) Val {
 	return &Num{o.F}
 }
 func (o Monad) Eval(c *Context) Val {
-	fn, ok := c.Monadics[o.Op]
-	if !ok {
-		log.Panicf("No such monadaic operator %q", o.Op)
+	var ok bool
+	var fn MonadicFunc
+	switch o.Token.Type {
+	case OperatorToken:
+		fn, ok = c.Monadics[o.Op]
+		if !ok {
+			log.Panicf("No such monadaic operator %q", o.Op)
+		}
+	case ReduceToken:
+		op1 := o.Token.Match[1]
+		fn1, ok := c.Dyadics[op1]
+		if !ok {
+			log.Panicf("Reduce syntax: No such dyadaic operator %q", op1)
+		}
+		identity, ok := IdentityValueOfDyadic[op1]
+		if !ok {
+			identity = Zero
+		}
+		fn = MkReduceOrScanOp(o.Token.Str, fn1, identity, false)
+	case ScanToken:
+		op1 := o.Token.Match[1]
+		fn1, ok := c.Dyadics[op1]
+		if !ok {
+			log.Panicf("Scan syntax: No such dyadaic operator %q", op1)
+		}
+		identity, ok := IdentityValueOfDyadic[op1]
+		if !ok {
+			identity = Zero
+		}
+		fn = MkReduceOrScanOp(o.Token.Str, fn1, identity, true)
 	}
+
 	b := o.B.Eval(c)
 	log.Printf("Monad:Eval %s %s -> ?", o.Op, b)
 	axis := DefaultAxis
@@ -129,19 +157,19 @@ func (o Dyad) Eval(c *Context) Val {
 		op1 := o.Token.Match[1]
 		fn1, ok := c.Dyadics[op1]
 		if !ok {
-			log.Panicf("No such dyadaic operator %q", op1)
+			log.Panicf("Inner product syntax: No such dyadaic operator %q", op1)
 		}
 		op2 := o.Token.Match[2]
 		fn2, ok := c.Dyadics[op2]
 		if !ok {
-			log.Panicf("No such dyadaic operator %q", op2)
+			log.Panicf("Inner product syntax: No such dyadaic operator %q", op2)
 		}
 		fn = MkInnerProduct(o.Token.Str, fn1, fn2)
 	case OuterProductToken:
 		op1 := o.Token.Match[1]
 		fn1, ok := c.Dyadics[op1]
 		if !ok {
-			log.Panicf("No such dyadaic operator %q", op1)
+			log.Panicf("Outer product syntax: No such dyadaic operator %q", op1)
 		}
 		fn = MkOuterProduct(o.Token.Str, fn1)
 	}

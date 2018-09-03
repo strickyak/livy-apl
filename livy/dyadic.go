@@ -71,7 +71,10 @@ var StandardDyadics = map[string]DyadicFunc{
 
 var Zero = &Num{0.0}
 var One = &Num{1.0}
-var ScanAndReduceWithIdentity = map[string]Val{
+
+// If not listed, we will use Zero.
+// TODO: have a way to user-define an identity operator (into the Context).
+var IdentityValueOfDyadic = map[string]Val{
 	"+":   Zero,
 	"-":   Zero,
 	"or":  Zero,
@@ -85,19 +88,6 @@ var ScanAndReduceWithIdentity = map[string]Val{
 	"==":  One,
 	">=":  One,
 	"<=":  One,
-}
-
-func init() {
-	for name, identity := range ScanAndReduceWithIdentity {
-		fn, ok := StandardDyadics[name]
-		if ok {
-			// TODO: MkReduceOrScanOp on the fly.
-			reduceName := name + `/`
-			StandardMonadics[reduceName] = MkReduceOrScanOp(reduceName, fn, identity, false)
-			scanName := name + `\`
-			StandardMonadics[scanName] = MkReduceOrScanOp(scanName, fn, identity, true)
-		}
-	}
 }
 
 // mod forcing positive result, since I don't actually know what Go does.
