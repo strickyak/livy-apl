@@ -25,6 +25,8 @@ const (
 	KeywordToken
 	ReduceToken
 	ScanToken
+	EachToken
+	StringToken
 )
 
 const JUST_OPERATOR = `([-+*/\\,&|!=<>]+|[a-z][A-Za-z0-9_]*)`
@@ -42,9 +44,11 @@ var MatchCloseCurly = regexp.MustCompile(`^[}]`).FindStringSubmatch
 var MatchBra = regexp.MustCompile(`^[[]`).FindStringSubmatch
 var MatchKet = regexp.MustCompile(`^[]]`).FindStringSubmatch
 var MatchSemi = regexp.MustCompile(`^[;]`).FindStringSubmatch
+var MatchString = regexp.MustCompile(`^(["]([^"\\]|[\\].)*["])`).FindStringSubmatch
 
 var MatchReduce = regexp.MustCompile("^" + JUST_OPERATOR + `[/]`).FindStringSubmatch
 var MatchScan = regexp.MustCompile("^" + JUST_OPERATOR + `[\\]`).FindStringSubmatch
+var MatchEach = regexp.MustCompile("^" + JUST_OPERATOR + `[~]`).FindStringSubmatch
 
 var MatchInnerProduct = regexp.MustCompile("^" + JUST_OPERATOR + "[.]" + JUST_OPERATOR).FindStringSubmatch
 var MatchOuterProduct = regexp.MustCompile("^[.][.]" + JUST_OPERATOR).FindStringSubmatch
@@ -61,6 +65,7 @@ var matchers = []Matcher{
 	{VariableToken, MatchVariable},
 	{ReduceToken, MatchReduce},
 	{ScanToken, MatchScan},
+	{EachToken, MatchEach},
 	{InnerProductToken, MatchInnerProduct},
 	{OuterProductToken, MatchOuterProduct},
 	{OperatorToken, MatchOperator},
@@ -71,6 +76,7 @@ var matchers = []Matcher{
 	{BraToken, MatchBra},
 	{KetToken, MatchKet},
 	{SemiToken, MatchSemi},
+	{StringToken, MatchString},
 }
 
 type Token struct {

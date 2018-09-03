@@ -252,7 +252,7 @@ LOOP:
 			log.Panicf("Unexpected `[` at position %d: %s", t.Pos, lex.Source)
 		case OpenCurlyToken:
 			log.Panicf("Unexpected `{` at position %d: %s", t.Pos, lex.Source)
-		case ScanToken, ReduceToken, InnerProductToken, OuterProductToken, OperatorToken:
+		case EachToken, ScanToken, ReduceToken, InnerProductToken, OuterProductToken, OperatorToken:
 			axis := Expression(nil)
 			var j int
 			if tt[i+1].Type == BraToken {
@@ -282,6 +282,16 @@ LOOP:
 				log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
 			}
 			vec = append(vec, &Number{num})
+			i++
+		case StringToken:
+			s, err := strconv.Unquote(t.Str)
+			if err != nil {
+				log.Panicf("Error parsing string %s at position %d: %s", t.Str, t.Pos, lex.Source)
+			}
+			if StringExtension == nil {
+				log.Panicf("No StringExtension in this interpreter")
+			}
+			vec = append(vec, StringExtension(s))
 			i++
 		case VariableToken:
 			variable := &Variable{t.Str}

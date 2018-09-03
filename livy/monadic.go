@@ -162,6 +162,20 @@ func boolf(a bool) float64 {
 	}
 }
 
+func MkEachOp(name string, fn MonadicFunc) MonadicFunc {
+	return func(c *Context, b Val, axis int) Val {
+		mat, ok := b.(*Mat)
+		if !ok {
+			log.Panicf("Each operator %s~ expects matrix argument, got %s", name, b)
+		}
+		vec := make([]Val, len(mat.M))
+		for i, x := range mat.M {
+			vec[i] = fn(c, x, axis)
+		}
+		return &Mat{vec, mat.S}
+	}
+}
+
 type funcFloatFloat func(b float64) float64
 
 func WrapFloatMonadic(fn funcFloatFloat) MonadicFunc {

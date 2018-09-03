@@ -7,6 +7,10 @@ import (
 	"reflect"
 )
 
+type StringExtensionFunc func(s string) Expression
+
+var StringExtension StringExtensionFunc
+
 type ValEnum int
 
 const (
@@ -14,6 +18,7 @@ const (
 	NumVal
 	MatVal
 	BoxVal
+	ChirpVal // github.com/yak-libs/chirp-lang extension
 )
 
 type Val interface {
@@ -66,7 +71,7 @@ func (o Mat) String() string {
 	return bb.String()
 }
 func (o Box) String() string {
-	return fmt.Sprintf("<Box> ")
+	return fmt.Sprintf("(%v)", o.X)
 }
 
 func (o Char) Pretty() string {

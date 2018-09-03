@@ -23,6 +23,10 @@ type Number struct {
 	F float64
 }
 
+type Literal struct {
+	V Val
+}
+
 type Monad struct {
 	Token *Token
 	Op    string
@@ -81,6 +85,9 @@ func (o Variable) Eval(c *Context) Val {
 func (o Number) Eval(c *Context) Val {
 	return &Num{o.F}
 }
+func (o Literal) Eval(c *Context) Val {
+	return o.V
+}
 func (o Monad) Eval(c *Context) Val {
 	var ok bool
 	var fn MonadicFunc
@@ -112,6 +119,13 @@ func (o Monad) Eval(c *Context) Val {
 			identity = Zero
 		}
 		fn = MkReduceOrScanOp(o.Token.Str, fn1, identity, true)
+	case EachToken:
+		op1 := o.Token.Match[1]
+		fn1, ok := c.Monadics[op1]
+		if !ok {
+			log.Panicf("Each syntax: No such dyadaic operator %q", op1)
+		}
+		fn = MkEachOp(o.Token.Str, fn1)
 	}
 
 	b := o.B.Eval(c)
@@ -455,6 +469,10 @@ func (o Variable) String() string {
 
 func (o Number) String() string {
 	return fmt.Sprintf("(#%g)", o.F)
+}
+
+func (o Literal) String() string {
+	return fmt.Sprintf("(%q)", o.V.String())
 }
 
 func (o Monad) String() string {

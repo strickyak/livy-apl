@@ -15,6 +15,7 @@ import (
 
 	"github.com/chzyer/readline"
 
+	_ "github.com/strickyak/livy-apl/extend"
 	. "github.com/strickyak/livy-apl/livy"
 )
 
