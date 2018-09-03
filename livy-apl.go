@@ -9,6 +9,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strings"
 
@@ -55,9 +56,13 @@ func main() {
 		log.SetPrefix("##")
 	}
 
+	home := os.Getenv("HOME")
+	if home == "" {
+		home = "."
+	}
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt:          "      ",
-		HistoryFile:     "/tmp/livy-apl.tmp",
+		HistoryFile:     filepath.Join(home, ".livy.history"),
 		InterruptPrompt: "*SIGINT*",
 		EOFPrompt:       "*EOF*",
 		// AutoComplete:    completer,
