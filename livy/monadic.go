@@ -9,6 +9,11 @@ import (
 type MonadicFunc func(c *Context, b Val, dim int) Val
 
 var StandardMonadics = map[string]MonadicFunc{
+	"box":   monadicBox,
+	"unbox": monadicUnbox,
+	"b":     monadicBox,
+	"u":     monadicUnbox,
+
 	"up":        monadicUp,
 	"down":      monadicDown,
 	"transpose": transposeMonadic,
@@ -370,4 +375,18 @@ func monadicUpDown(c *Context, b Val, reverse bool, name string) Val {
 	}
 
 	return &Mat{outVec, []int{n}}
+}
+func monadicBox(c *Context, b Val, axis int) Val {
+	return &Box{b}
+}
+func monadicUnbox(c *Context, b Val, axis int) Val {
+	box, ok := b.(*Box)
+	if !ok {
+		log.Panicf("In unbox, not a box: %T: %v", b, b)
+	}
+	val, ok := box.X.(Val)
+	if !ok {
+		log.Panicf("In unbox, not an apl value in the box: %T: %v", box.X, box.X)
+	}
+	return val
 }

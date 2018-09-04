@@ -143,7 +143,7 @@ func (o Mat) Pretty() string {
 	return bb.String()
 }
 func (o Box) Pretty() string {
-	return fmt.Sprintf("<Box> ")
+	return fmt.Sprintf("(Box of %T: %v) ", o.X, o.X)
 }
 
 func (o Char) GetScalarInt() int {
