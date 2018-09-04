@@ -27,7 +27,11 @@ import (
 	"strconv"
 )
 
-func ParseBracket(lex *Lex, i int) ([]Expression, int) {
+type Parser struct {
+	Context *Context
+}
+
+func (p *Parser) ParseBracket(lex *Lex, i int) ([]Expression, int) {
 	i++
 	var vec []Expression
 	var tmp Expression
@@ -43,18 +47,18 @@ func ParseBracket(lex *Lex, i int) ([]Expression, int) {
 			tmp = nil
 		default:
 			// This is a bit weak.
-			tmp, i = ParseExpr(lex, i)
+			tmp, i = p.ParseExpr(lex, i)
 		}
 	}
 }
 
-func ParseSeq(lex *Lex, i int) (*Seq, int) {
+func (p *Parser) ParseSeq(lex *Lex, i int) (*Seq, int) {
 	tt := lex.Tokens
 	var vec []Expression
 LOOP:
 	for i < len(tt) && tt[i].Type != EndToken {
 		log.Printf("ParseSeq: i=%d max=%d token=%s", i, len(tt), tt[i])
-		b, j := ParseExpr(lex, i)
+		b, j := p.ParseExpr(lex, i)
 		log.Printf("ParseSeq: i=%d b=%s", i, b)
 		vec = append(vec, b)
 		i = j
@@ -80,11 +84,11 @@ LOOP:
 	return &Seq{vec}, i
 }
 
-func ParseWhile(lex *Lex, i int) (*While, int) {
+func (p *Parser) ParseWhile(lex *Lex, i int) (*While, int) {
 	tt := lex.Tokens
 	t := tt[i]
 
-	whileSeq, j := ParseSeq(lex, i)
+	whileSeq, j := p.ParseSeq(lex, i)
 	i = j
 
 	t = tt[i]
@@ -94,7 +98,7 @@ func ParseWhile(lex *Lex, i int) (*While, int) {
 
 	i++
 	t = tt[i]
-	doSeq, j := ParseSeq(lex, i)
+	doSeq, j := p.ParseSeq(lex, i)
 	i = j
 	t = tt[i]
 	if t.Str != "done" {
@@ -105,11 +109,11 @@ func ParseWhile(lex *Lex, i int) (*While, int) {
 	return z, i + 1
 }
 
-func ParseIf(lex *Lex, i int) (*Cond, int) {
+func (p *Parser) ParseIf(lex *Lex, i int) (*Cond, int) {
 	tt := lex.Tokens
 	t := tt[i]
 
-	ifSeq, j := ParseSeq(lex, i)
+	ifSeq, j := p.ParseSeq(lex, i)
 	i = j
 
 	t = tt[i]
@@ -119,7 +123,7 @@ func ParseIf(lex *Lex, i int) (*Cond, int) {
 
 	i++
 	t = tt[i]
-	thenSeq, j := ParseSeq(lex, i)
+	thenSeq, j := p.ParseSeq(lex, i)
 	i = j
 	t = tt[i]
 	if t.Str != "else" {
@@ -127,7 +131,7 @@ func ParseIf(lex *Lex, i int) (*Cond, int) {
 	}
 	i++
 	t = tt[i]
-	elseSeq, j := ParseSeq(lex, i)
+	elseSeq, j := p.ParseSeq(lex, i)
 	i = j
 	t = tt[i]
 	if t.Str != "fi" {
@@ -138,7 +142,7 @@ func ParseIf(lex *Lex, i int) (*Cond, int) {
 	return z, i + 1
 }
 
-func ParseDef(lex *Lex, i int) (*Def, int) {
+func (p *Parser) ParseDef(lex *Lex, i int) (*Def, int) {
 	var lhs, axis, rhs string
 	var locals []string
 
@@ -202,7 +206,7 @@ func ParseDef(lex *Lex, i int) (*Def, int) {
 	}
 	i++
 
-	seq, j := ParseSeq(lex, i)
+	seq, j := p.ParseSeq(lex, i)
 	i = j
 	t = tt[i]
 
@@ -213,7 +217,7 @@ func ParseDef(lex *Lex, i int) (*Def, int) {
 	return &Def{name, seq, lhs, axis, rhs, locals}, i
 }
 
-func ParseExpr(lex *Lex, i int) (z Expression, zi int) {
+func (p *Parser) ParseExpr(lex *Lex, i int) (z Expression, zi int) {
 	tt := lex.Tokens
 	var vec []Expression
 LOOP:
@@ -230,15 +234,15 @@ LOOP:
 				vec = append(vec, CONTINUE)
 				i++
 			case "def":
-				def, j := ParseDef(lex, i+1)
+				def, j := p.ParseDef(lex, i+1)
 				vec = append(vec, def)
 				i = j
 			case "if":
-				cond, j := ParseIf(lex, i+1)
+				cond, j := p.ParseIf(lex, i+1)
 				vec = append(vec, cond)
 				i = j
 			case "while":
-				while, j := ParseWhile(lex, i+1)
+				while, j := p.ParseWhile(lex, i+1)
 				vec = append(vec, while)
 				i = j
 			case "then", "else", "fi", "do", "done":
@@ -257,7 +261,7 @@ LOOP:
 			var j int
 			if tt[i+1].Type == BraToken {
 				log.Printf("Axis1")
-				axis, j = ParseExpr(lex, i+2)
+				axis, j = p.ParseExpr(lex, i+2)
 				log.Printf("Axis2 %d %s", j, axis)
 				if tt[j].Type != KetToken {
 					log.Panicf("Expected ']' but got %q after subscript", tt[i].Str)
@@ -266,7 +270,7 @@ LOOP:
 			}
 
 			log.Printf("===== PE [%d]", i+1)
-			b, j := ParseExpr(lex, i+1)
+			b, j := p.ParseExpr(lex, i+1)
 			log.Printf("===== PE [%d] --> %v %d", i+1, b, j)
 			switch len(vec) {
 			case 0:
@@ -288,17 +292,17 @@ LOOP:
 			if err != nil {
 				log.Panicf("Error parsing string %s at position %d: %s", t.Str, t.Pos, lex.Source)
 			}
-			if StringExtension == nil {
+			if p.Context.StringExtension == nil {
 				log.Panicf("No StringExtension in this interpreter")
 			}
-			vec = append(vec, StringExtension(s))
+			vec = append(vec, p.Context.StringExtension(s))
 			i++
 		case VariableToken:
 			variable := &Variable{t.Str}
 			i++
 			if tt[i].Type == BraToken {
 				log.Printf("B1")
-				subs, j := ParseBracket(lex, i)
+				subs, j := p.ParseBracket(lex, i)
 				log.Printf("B2 %d %s", j, subs)
 				vec = append(vec, &Subscript{variable, subs})
 				log.Printf("B3 %s", vec)
@@ -307,12 +311,12 @@ LOOP:
 				vec = append(vec, variable)
 			}
 		case OpenToken:
-			expr, j := ParseExpr(lex, i+1)
+			expr, j := p.ParseExpr(lex, i+1)
 			i = j + 1
 			// Allow brackets after parens e.g. (iota1 10)[2 4 6]
 			if tt[i].Type == BraToken {
 				log.Printf("B1")
-				subs, j := ParseBracket(lex, i)
+				subs, j := p.ParseBracket(lex, i)
 				log.Printf("B2 %d %s", j, subs)
 				vec = append(vec, &Subscript{expr, subs})
 				log.Printf("B3 %s", vec)

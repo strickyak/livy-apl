@@ -7,10 +7,6 @@ import (
 	"reflect"
 )
 
-type StringExtensionFunc func(s string) Expression
-
-var StringExtension StringExtensionFunc
-
 type ValEnum int
 
 const (

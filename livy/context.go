@@ -6,11 +6,16 @@ import (
 	"sort"
 )
 
+type StringExtensionFunc func(s string) Expression
+
 type Context struct {
 	Globals    map[string]Val
 	Monadics   map[string]MonadicFunc
 	Dyadics    map[string]DyadicFunc
 	LocalStack []map[string]Val
+
+	StringExtension StringExtensionFunc
+	Extra           map[string]interface{}
 }
 
 func (c *Context) Command(s string) {

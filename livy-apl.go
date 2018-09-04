@@ -15,7 +15,7 @@ import (
 
 	"github.com/chzyer/readline"
 
-	_ "github.com/strickyak/livy-apl/extend"
+	extend "github.com/strickyak/livy-apl/extend"
 	. "github.com/strickyak/livy-apl/livy"
 )
 
@@ -37,7 +37,8 @@ func EvalString(c *Context, line string) (val Val, err error) {
 		}()
 	}
 	lex := Tokenize(line)
-	expr, _ := ParseSeq(lex, 0)
+	p := &Parser{c}
+	expr, _ := p.ParseSeq(lex, 0)
 	val = expr.Eval(c)
 	return
 }
@@ -79,7 +80,9 @@ func main() {
 		Globals:  make(map[string]Val),
 		Monadics: StandardMonadics,
 		Dyadics:  StandardDyadics,
+		Extra:    make(map[string]interface{}),
 	}
+	extend.Init(c)
 	c.Globals["Pi"] = &Num{math.Pi}
 	c.Globals["Tau"] = &Num{2.0 * math.Pi}
 	c.Globals["E"] = &Num{math.E}
@@ -118,7 +121,7 @@ func main() {
 		c.Globals[name] = result
 		c.Globals["_"] = result
 		if *Raw {
-			fmt.Fprintf(os.Stdout, "%s = %s\n", name, result)
+			fmt.Fprintf(os.Stdout, "%s = (%T) %s\n", name, result, result)
 		} else {
 			bb := bytes.NewBuffer(nil)
 			shape := result.Shape()
@@ -128,7 +131,7 @@ func main() {
 				}
 				fmt.Fprintf(bb, "rho")
 			}
-			fmt.Fprintf(os.Stdout, "   %s = %s\n%s\n", name, bb.String(), result.Pretty())
+			fmt.Fprintf(os.Stdout, "   %s = (%T) %s\n%s\n", name, result, bb.String(), result.Pretty())
 		}
 		i++
 	}

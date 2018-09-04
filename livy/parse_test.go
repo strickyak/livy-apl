@@ -34,7 +34,8 @@ func Standard() *Context {
 func TestMonadic(t *testing.T) {
 	for _, test := range parserTests {
 		lex := Tokenize(test.src)
-		expr, _ := ParseExpr(lex, 0)
+		p := &Parser{}
+		expr, _ := p.ParseExpr(lex, 0)
 		log.Printf("EXPR: %s", expr)
 		got := expr.String()
 
@@ -48,7 +49,8 @@ func TestMonadic(t *testing.T) {
 func TestEvalMonadic(t *testing.T) {
 	c := Standard()
 	lex := Tokenize("double Pi")
-	expr, _ := ParseExpr(lex, 0)
+	p := &Parser{}
+	expr, _ := p.ParseExpr(lex, 0)
 	got := expr.Eval(c)
 
 	want := &Num{2.0 * math.Pi}
@@ -61,7 +63,8 @@ func TestEvalMonadic(t *testing.T) {
 func TestEvalDyadic(t *testing.T) {
 	c := Standard()
 	lex := Tokenize("One + Two")
-	expr, _ := ParseExpr(lex, 0)
+	p := &Parser{}
+	expr, _ := p.ParseExpr(lex, 0)
 	got := expr.Eval(c)
 
 	want := &Num{3.0}
@@ -74,7 +77,8 @@ func TestEvalDyadic(t *testing.T) {
 func TestEvalParens(t *testing.T) {
 	c := Standard()
 	lex := Tokenize("( 1 + iota 4 ) rho iota 5")
-	expr, _ := ParseExpr(lex, 0)
+	p := &Parser{}
+	expr, _ := p.ParseExpr(lex, 0)
 	got := expr.Eval(c)
 
 	const want = "[1 2 3 4 ]{0 1 2 3 4 0 1 2 3 4 0 1 2 3 4 0 1 2 3 4 0 1 2 3 } "
@@ -87,7 +91,8 @@ func TestEvalParens(t *testing.T) {
 func TestEvalLiteralList(t *testing.T) {
 	c := Standard()
 	lex := Tokenize("2 3  5 rho 4 6 8")
-	expr, _ := ParseExpr(lex, 0)
+	p := &Parser{}
+	expr, _ := p.ParseExpr(lex, 0)
 	got := expr.Eval(c)
 
 	const want = "[2 3 5 ]{4 6 8 4 6 8 4 6 8 4 6 8 4 6 8 4 6 8 4 6 8 4 6 8 4 6 8 4 6 8 } "
@@ -281,17 +286,18 @@ var evalTests = []srcWantPair{
 }
 
 func TestEval(t *testing.T) {
-	for _, p := range evalTests {
-		log.Printf("TestEval <<< %q", p.src)
+	for _, test := range evalTests {
+		log.Printf("TestEval <<< %q", test.src)
 		c := Standard()
-		lex := Tokenize(p.src)
-		expr, _ := ParseSeq(lex, 0)
+		lex := Tokenize(test.src)
+		p := &Parser{}
+		expr, _ := p.ParseSeq(lex, 0)
 		got := expr.Eval(c)
-		log.Printf("TestEval === %q", p.src)
+		log.Printf("TestEval === %q", test.src)
 		log.Printf("TestEval >>> %v", got)
 
-		if got.String() != p.want {
-			t.Errorf("Got %q, wanted %q, for src %q", got, p.want, p.src)
+		if got.String() != test.want {
+			t.Errorf("Got %q, wanted %q, for src %q", got, test.want, test.src)
 		}
 	}
 	println("250 OK")
