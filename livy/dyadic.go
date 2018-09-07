@@ -166,9 +166,9 @@ func MkInnerProduct(name string, fn1, fn2 DyadicFunc) DyadicFunc {
 		for _, sz := range shape2[1:] {
 			outShape = append(outShape, sz)
 		}
-		outVec := make([]Val, mulReduce(outShape))
+		outVec := make([]Val, MulReduce(outShape))
 		innerStride1 := 1
-		innerStride2 := mulReduce(shape2[1:])
+		innerStride2 := MulReduce(shape2[1:])
 		innerLength := shape2[0]
 		log.Printf("innerStride 1:%d 2:%d innerLength:%d", innerStride1, innerStride2, innerLength)
 
@@ -187,12 +187,12 @@ func MkInnerProduct(name string, fn1, fn2 DyadicFunc) DyadicFunc {
 				outVec[outOff] = rhs
 			} else if rank1 == 1 {
 				// Stop using shape1 and start using shape2 when rank1 == 1.
-				stride2, outStride := mulReduce(shape2[1:]), mulReduce(outShape[1:])
+				stride2, outStride := MulReduce(shape2[1:]), MulReduce(outShape[1:])
 				for i := 0; i < shape2[0]; i++ {
 					recurse(shape1, shape2[1:], off1, off2+i*stride2, outShape[1:], outOff+i*outStride)
 				}
 			} else {
-				stride1, outStride := mulReduce(shape1[1:]), mulReduce(outShape[1:])
+				stride1, outStride := MulReduce(shape1[1:]), MulReduce(outShape[1:])
 				for i := 0; i < shape1[0]; i++ {
 					recurse(shape1[1:], shape2, off1+i*stride1, off2, outShape[1:], outOff+i*outStride)
 				}
@@ -241,11 +241,11 @@ func MkReduceOrScanOp(name string, fn DyadicFunc, identity Val, toScan bool) Mon
 			}
 		}
 
-		newVecLen := mulReduce(newShape)
+		newVecLen := MulReduce(newShape)
 		newVec := make([]Val, newVecLen)
 		oldVec := mat.M
 
-		reduceStride, reduceLen := mulReduce(oldShape[axis+1:]), oldShape[axis]
+		reduceStride, reduceLen := MulReduce(oldShape[axis+1:]), oldShape[axis]
 		log.Printf("Reduce Stride = %d", reduceStride)
 		revAxis := oldRank - axis
 
@@ -284,7 +284,7 @@ func MkReduceOrScanOp(name string, fn DyadicFunc, identity Val, toScan bool) Mon
 				// This is the old dimension we reduce.
 				// It exists in the oldShape but not in the newShape, if reducing.
 				// We do not iterate i here -- that will happen above when rank==0.
-				if reduceStride != mulReduce(oldShape[1:]) {
+				if reduceStride != MulReduce(oldShape[1:]) {
 					panic(0)
 				}
 				if toScan {
@@ -294,8 +294,8 @@ func MkReduceOrScanOp(name string, fn DyadicFunc, identity Val, toScan bool) Mon
 				reduce(oldShape[1:], oldOffset, newShape, newOffset, oldOffset)
 			} else {
 				for i := 0; i < oldShape[0]; i++ {
-					oldStride := mulReduce(oldShape[1:])
-					newStride := mulReduce(newShape[1:])
+					oldStride := MulReduce(oldShape[1:])
+					newStride := MulReduce(newShape[1:])
 					reduce(oldShape[1:], oldOffset+i*oldStride, newShape[1:], newOffset+i*newStride, reduceOffset)
 				}
 			}
@@ -324,7 +324,7 @@ func asMat(a Val) *Mat {
 
 func dyadicRho(c *Context, a Val, b Val, axis int) Val {
 	spec := GetVectorOfScalarInts(a)
-	outSize := mulReduce(spec)
+	outSize := MulReduce(spec)
 	bm := asMat(b)
 
 	if outSize > 0 && bm == nil {
@@ -568,7 +568,7 @@ func dyadicRot(c *Context, a Val, b Val, axis int) Val {
 			outShape = append(outShape, sz)
 		}
 	}
-	outSize := mulReduce(outShape)
+	outSize := MulReduce(outShape)
 	if outSize < 1 {
 		return &Mat{M: nil, S: outShape}
 	}
@@ -581,8 +581,8 @@ func dyadicRot(c *Context, a Val, b Val, axis int) Val {
 			// log.Printf("Assign out [%d] <- in [%d]", outOff, inOff)
 			outVec[outOff] = inVec[inOff]
 		case revaxis:
-			inStride := mulReduce(inShape[1:])
-			outStride := mulReduce(outShape[1:])
+			inStride := MulReduce(inShape[1:])
+			outStride := MulReduce(outShape[1:])
 			for o := 0; o < outShape[0]; o++ {
 				i := spec[o]
 				i = mod(i, inShape[0])
@@ -590,8 +590,8 @@ func dyadicRot(c *Context, a Val, b Val, axis int) Val {
 					outShape[1:], outOff+o*outStride)
 			}
 		default:
-			inStride := mulReduce(inShape[1:])
-			outStride := mulReduce(outShape[1:])
+			inStride := MulReduce(inShape[1:])
+			outStride := MulReduce(outShape[1:])
 			for o := 0; o < outShape[0]; o++ {
 				i := o
 				recurse(inShape[1:], inOff+i*inStride,
@@ -654,7 +654,7 @@ func dyadicTakeOrDrop(c *Context, a Val, b Val, axis int, dropping bool) Val {
 			inStart = append(inStart, 0)
 		}
 	}
-	outVec := make([]Val, mulReduce(outShape))
+	outVec := make([]Val, MulReduce(outShape))
 
 	log.Printf("inStart %v", inStart)
 	log.Printf("inShape %v", inShape)
@@ -667,8 +667,8 @@ func dyadicTakeOrDrop(c *Context, a Val, b Val, axis int, dropping bool) Val {
 			outVec[outOff] = inVec[inOff]
 			return
 		}
-		inStride := mulReduce(inShape[1:])
-		outStride := mulReduce(outShape[1:])
+		inStride := MulReduce(inShape[1:])
+		outStride := MulReduce(outShape[1:])
 		for i := 0; i < outShape[0]; i++ {
 			recurse(inStart[1:], inShape[1:], inOff+(inStart[0]+i)*inStride, outShape[1:], outOff+i*outStride)
 		}
@@ -732,7 +732,7 @@ func dyadicExpandOrCompress(c *Context, a Val, b Val, axis int, compressing bool
 			outShape = append(outShape, a)
 		}
 	}
-	outVec := make([]Val, mulReduce(outShape))
+	outVec := make([]Val, MulReduce(outShape))
 
 	var recurse func(inShape []int, inOff int, outShape []int, outOff int)
 	recurse = func(inShape []int, inOff int, outShape []int, outOff int) {
@@ -746,8 +746,8 @@ func dyadicExpandOrCompress(c *Context, a Val, b Val, axis int, compressing bool
 			}
 			return
 		}
-		inStride := mulReduce(inShape[1:])
-		outStride := mulReduce(outShape[1:])
+		inStride := MulReduce(inShape[1:])
+		outStride := MulReduce(outShape[1:])
 		if len(inShape)+axis == origInRank {
 			j := 0 // out index
 			for _, p := range plan {
@@ -812,7 +812,7 @@ func dyadicCatenate(c *Context, a Val, b Val, axis int) Val {
 	}
 	log.Printf("Concatenate: lhs %v rhs %v out %v", aShape, bShape, outShape)
 
-	outVec := make([]Val, mulReduce(outShape))
+	outVec := make([]Val, MulReduce(outShape))
 	var inVec []Val
 
 	var recurse func(inShape []int, inOff int, outShape []int, outOff int)
@@ -822,8 +822,8 @@ func dyadicCatenate(c *Context, a Val, b Val, axis int) Val {
 			return
 		}
 
-		inStride := mulReduce(inShape[1:])
-		outStride := mulReduce(outShape[1:])
+		inStride := MulReduce(inShape[1:])
+		outStride := MulReduce(outShape[1:])
 		for i := 0; i < inShape[0]; i++ {
 			recurse(inShape[1:], inOff+i*inStride, outShape[1:], outOff+i*outStride)
 		}
@@ -833,7 +833,7 @@ func dyadicCatenate(c *Context, a Val, b Val, axis int) Val {
 	recurse(aShape, 0, outShape, 0)
 
 	inVec = bVec
-	recurse(bShape, 0, outShape, aShape[axis]*mulReduce(outShape[axis+1:]))
+	recurse(bShape, 0, outShape, aShape[axis]*MulReduce(outShape[axis+1:]))
 
 	return &Mat{M: outVec, S: outShape}
 }
@@ -871,7 +871,7 @@ func dyadicTranspose(c *Context, a Val, b Val, axis int) Val {
 		//log.Printf("i=%d e=%d, outShape<<%v", i, e, outShape)
 		outShape[e] = inShape[i]
 		// If this happens more than once, it is a diagonal:
-		stride[e] += mulReduce(inShape[i+1:])
+		stride[e] += MulReduce(inShape[i+1:])
 		//log.Printf("outShape>>%v; stride>>%v", outShape, stride)
 	}
 

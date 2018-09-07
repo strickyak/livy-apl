@@ -88,8 +88,8 @@ func (o Mat) PrettyMatrix(vec []string) string {
 		}
 	default:
 		for i := 0; i < o.S[0]; i++ {
-			begin := i * mulReduce(o.S[1:])
-			end := (i + 1) * mulReduce(o.S[1:])
+			begin := i * MulReduce(o.S[1:])
+			end := (i + 1) * MulReduce(o.S[1:])
 			bb.WriteString(Mat{M: o.M[begin:end], S: o.S[1:]}.PrettyMatrix(vec[begin:end]))
 			bb.WriteString("\n")
 		}
