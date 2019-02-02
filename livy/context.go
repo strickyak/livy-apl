@@ -1,7 +1,6 @@
 package livy
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
