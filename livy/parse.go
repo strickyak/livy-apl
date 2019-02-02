@@ -1,29 +1,32 @@
 package livy
 
-// “Should array indices start at 0 or 1?
-// My compromise of 0.5 was rejected without, I thought, proper consideration.”
-//      — Stan Kelly-Bootle
-//   — http://exple.tive.org/blarg/2013/10/22/citation-needed/
+/*
+	“Should array indices start at 0 or 1?
+	 My compromise of 0.5 was rejected without, I thought, proper consideration.”
+	  — Stan Kelly-Bootle
+	http://exple.tive.org/blarg/2013/10/22/citation-needed/
 
-// "So let us let our ordinals start at zero: ..."
-//   — Edsger W. Dijkstra
+	"So let us let our ordinals start at zero: an element's ordinal (subscript)
+	 equals the number of elements preceding it in the sequence."
+	  — Edsger W. Dijkstra
+	https://www.cs.utexas.edu/users/EWD/transcriptions/EWD08xx/EWD831.html
 
-// I used to describe [Pascal] as a ‘fascist programming language’,
-// because it is dictatorially rigid. …
-// If Pascal is fascist, APL is anarchist.
-//   — Brad McCormick
-// http://www.computerhistory.org/atchm/the-apl-programming-language-source-code/#footnote-13
-// http://www.users.cloud9.net/~bradmcc/APL.html
+	"I used to describe [Pascal] as a ‘fascist programming language’,
+	 because it is dictatorially rigid. …
+	 If Pascal is fascist, APL is anarchist."
+	  — Brad McCormick
+	http://www.computerhistory.org/atchm/the-apl-programming-language-source-code/#footnote-13
+	http://www.users.cloud9.net/~bradmcc/APL.html
 
-// APL is a mistake, carried through to perfection. It is the language
-// of the future for the programming techniques of the past: it creates a
-// new generation of coding bums.
-//   — Edsger W. Dijkstra
-// http://www.computerhistory.org/atchm/the-apl-programming-language-source-code/#footnote-14
-// https://www.cs.virginia.edu/~evans/cs655/readings/ewd498.html
+	"APL is a mistake, carried through to perfection. It is the language
+	 of the future for the programming techniques of the past: it creates a
+	 new generation of coding bums."
+	  — Edsger W. Dijkstra
+	http://www.computerhistory.org/atchm/the-apl-programming-language-source-code/#footnote-14
+	https://www.cs.virginia.edu/~evans/cs655/readings/ewd498.html
+*/
 
 import (
-	"log"
 	"strconv"
 )
 
@@ -57,9 +60,9 @@ func (p *Parser) ParseSeq(lex *Lex, i int) (*Seq, int) {
 	var vec []Expression
 LOOP:
 	for i < len(tt) && tt[i].Type != EndToken {
-		log.Printf("ParseSeq: i=%d max=%d token=%s", i, len(tt), tt[i])
+		Log.Printf("ParseSeq: i=%d max=%d token=%s", i, len(tt), tt[i])
 		b, j := p.ParseExpr(lex, i)
-		log.Printf("ParseSeq: i=%d b=%s", i, b)
+		Log.Printf("ParseSeq: i=%d b=%s", i, b)
 		vec = append(vec, b)
 		i = j
 
@@ -69,7 +72,7 @@ LOOP:
 			case "then", "else", "fi", "do", "done":
 				break LOOP
 			default:
-				log.Panicf("unexpected keyword: %q", tt[i].Str)
+				Log.Panicf("unexpected keyword: %q", tt[i].Str)
 			}
 		case EndToken, CloseCurlyToken:
 			break LOOP
@@ -77,7 +80,7 @@ LOOP:
 			i++
 			continue LOOP
 		default:
-			log.Panicf("default: %d %s", i, tt[i])
+			Log.Panicf("default: %d %s", i, tt[i])
 		}
 	}
 
@@ -93,7 +96,7 @@ func (p *Parser) ParseWhile(lex *Lex, i int) (*While, int) {
 
 	t = tt[i]
 	if t.Str != "do" {
-		log.Panicf("expected `do` but got %q", t.Str)
+		Log.Panicf("expected `do` but got %q", t.Str)
 	}
 
 	i++
@@ -102,10 +105,10 @@ func (p *Parser) ParseWhile(lex *Lex, i int) (*While, int) {
 	i = j
 	t = tt[i]
 	if t.Str != "done" {
-		log.Panicf("expected `done` but got %q", t.Str)
+		Log.Panicf("expected `done` but got %q", t.Str)
 	}
 	z := &While{whileSeq, doSeq}
-	log.Printf("ParseWhile returns %v", z)
+	Log.Printf("ParseWhile returns %v", z)
 	return z, i + 1
 }
 
@@ -118,7 +121,7 @@ func (p *Parser) ParseIf(lex *Lex, i int) (*Cond, int) {
 
 	t = tt[i]
 	if t.Str != "then" {
-		log.Panicf("expected `then` but got %q", t.Str)
+		Log.Panicf("expected `then` but got %q", t.Str)
 	}
 
 	i++
@@ -127,7 +130,7 @@ func (p *Parser) ParseIf(lex *Lex, i int) (*Cond, int) {
 	i = j
 	t = tt[i]
 	if t.Str != "else" {
-		log.Panicf("expected `else` but got %q", t.Str)
+		Log.Panicf("expected `else` but got %q", t.Str)
 	}
 	i++
 	t = tt[i]
@@ -135,10 +138,10 @@ func (p *Parser) ParseIf(lex *Lex, i int) (*Cond, int) {
 	i = j
 	t = tt[i]
 	if t.Str != "fi" {
-		log.Panicf("expected `else` but got %q", t.Str)
+		Log.Panicf("expected `else` but got %q", t.Str)
 	}
 	z := &Cond{ifSeq, thenSeq, elseSeq}
-	log.Printf("ParseIf returns %v", z)
+	Log.Printf("ParseIf returns %v", z)
 	return z, i + 1
 }
 
@@ -157,7 +160,7 @@ func (p *Parser) ParseDef(lex *Lex, i int) (*Def, int) {
 	}
 
 	if t.Type != OperatorToken {
-		log.Panicf("expected operator after def, but got %v", t)
+		Log.Panicf("expected operator after def, but got %v", t)
 	}
 	name := t.Str
 	i++
@@ -166,20 +169,20 @@ func (p *Parser) ParseDef(lex *Lex, i int) (*Def, int) {
 		i++
 		t = tt[i]
 		if t.Type != VariableToken {
-			log.Panicf("expected AXIS variable after def operator open-bracket, but got %v", t)
+			Log.Panicf("expected AXIS variable after def operator open-bracket, but got %v", t)
 		}
 		axis = t.Str
 		locals = append(locals, axis)
 		i++
 		t = tt[i]
 		if t.Type != KetToken {
-			log.Panicf("expected close-bracket def operator open-bracket axis, but got %v", t)
+			Log.Panicf("expected close-bracket def operator open-bracket axis, but got %v", t)
 		}
 		i++
 		t = tt[i]
 	}
 	if t.Type != VariableToken {
-		log.Panicf("expected RHS variable after def, but got %v", t)
+		Log.Panicf("expected RHS variable after def, but got %v", t)
 	}
 	rhs = t.Str
 	locals = append(locals, rhs)
@@ -194,7 +197,7 @@ func (p *Parser) ParseDef(lex *Lex, i int) (*Def, int) {
 			break
 		}
 		if t.Type != VariableToken {
-			log.Panicf("expected local variable name after def semicolon, but got %v", t)
+			Log.Panicf("expected local variable name after def semicolon, but got %v", t)
 		}
 		locals = append(locals, t.Str)
 		i++
@@ -202,7 +205,7 @@ func (p *Parser) ParseDef(lex *Lex, i int) (*Def, int) {
 	}
 
 	if t.Type != OpenCurlyToken {
-		log.Panicf("expected open-curly-brace after operator after def, but got %v", t)
+		Log.Panicf("expected open-curly-brace after operator after def, but got %v", t)
 	}
 	i++
 
@@ -211,7 +214,7 @@ func (p *Parser) ParseDef(lex *Lex, i int) (*Def, int) {
 	t = tt[i]
 
 	if t.Type != CloseCurlyToken {
-		log.Panicf("expected close-curly-brace after operator after def, but got %v", t)
+		Log.Panicf("expected close-curly-brace after operator after def, but got %v", t)
 	}
 	i++
 	return &Def{name, seq, lhs, axis, rhs, locals}, i
@@ -223,7 +226,7 @@ func (p *Parser) ParseExpr(lex *Lex, i int) (z Expression, zi int) {
 LOOP:
 	for {
 		t := tt[i]
-		log.Printf("........ [%d] %q %v", i, t.Str, t)
+		Log.Printf("........ [%d] %q %v", i, t.Str, t)
 		switch t.Type {
 		case KeywordToken:
 			switch t.Str {
@@ -248,30 +251,30 @@ LOOP:
 			case "then", "else", "fi", "do", "done":
 				break LOOP
 			default:
-				log.Panicf("initial keyword not implemented: %q", t.Str)
+				Log.Panicf("initial keyword not implemented: %q", t.Str)
 			}
 		case EndToken, CloseToken, KetToken, SemiToken, CloseCurlyToken:
 			break LOOP
 		case BraToken:
-			log.Panicf("Unexpected `[` at position %d: %s", t.Pos, lex.Source)
+			Log.Panicf("Unexpected `[` at position %d: %s", t.Pos, lex.Source)
 		case OpenCurlyToken:
-			log.Panicf("Unexpected `{` at position %d: %s", t.Pos, lex.Source)
+			Log.Panicf("Unexpected `{` at position %d: %s", t.Pos, lex.Source)
 		case EachToken, ScanToken, ReduceToken, InnerProductToken, OuterProductToken, OperatorToken:
 			axis := Expression(nil)
 			var j int
 			if tt[i+1].Type == BraToken {
-				log.Printf("Axis1")
+				Log.Printf("Axis1")
 				axis, j = p.ParseExpr(lex, i+2)
-				log.Printf("Axis2 %d %s", j, axis)
+				Log.Printf("Axis2 %d %s", j, axis)
 				if tt[j].Type != KetToken {
-					log.Panicf("Expected ']' but got %q after subscript", tt[i].Str)
+					Log.Panicf("Expected ']' but got %q after subscript", tt[i].Str)
 				}
 				i = j // Don't add 1 here; ParseExpr just below gets i+1.
 			}
 
-			log.Printf("===== PE [%d]", i+1)
+			Log.Printf("===== PE [%d]", i+1)
 			b, j := p.ParseExpr(lex, i+1)
-			log.Printf("===== PE [%d] --> %v %d", i+1, b, j)
+			Log.Printf("===== PE [%d] --> %v %d", i+1, b, j)
 			switch len(vec) {
 			case 0:
 				return &Monad{t, t.Str, b, axis}, j
@@ -283,17 +286,17 @@ LOOP:
 		case NumberToken:
 			num, err := strconv.ParseFloat(t.Str, 64)
 			if err != nil {
-				log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
+				Log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
 			}
 			vec = append(vec, &Number{num})
 			i++
 		case StringToken:
 			s, err := strconv.Unquote(t.Str)
 			if err != nil {
-				log.Panicf("Error parsing string %s at position %d: %s", t.Str, t.Pos, lex.Source)
+				Log.Panicf("Error parsing string %s at position %d: %s", t.Str, t.Pos, lex.Source)
 			}
 			if p.Context.StringExtension == nil {
-				log.Panicf("No StringExtension in this interpreter")
+				Log.Panicf("No StringExtension in this interpreter")
 			}
 			vec = append(vec, p.Context.StringExtension(s))
 			i++
@@ -301,11 +304,11 @@ LOOP:
 			variable := &Variable{t.Str}
 			i++
 			if tt[i].Type == BraToken {
-				log.Printf("B1")
+				Log.Printf("B1")
 				subs, j := p.ParseBracket(lex, i)
-				log.Printf("B2 %d %s", j, subs)
+				Log.Printf("B2 %d %s", j, subs)
 				vec = append(vec, &Subscript{variable, subs})
-				log.Printf("B3 %s", vec)
+				Log.Printf("B3 %s", vec)
 				i = j
 			} else {
 				vec = append(vec, variable)
@@ -315,26 +318,26 @@ LOOP:
 			i = j + 1
 			// Allow brackets after parens e.g. (iota1 10)[2 4 6]
 			if tt[i].Type == BraToken {
-				log.Printf("B1")
+				Log.Printf("B1")
 				subs, j := p.ParseBracket(lex, i)
-				log.Printf("B2 %d %s", j, subs)
+				Log.Printf("B2 %d %s", j, subs)
 				vec = append(vec, &Subscript{expr, subs})
-				log.Printf("B3 %s", vec)
+				Log.Printf("B3 %s", vec)
 				i = j
 			} else {
 				vec = append(vec, expr)
 			}
 		default:
-			log.Panicf("bad default: %d", t.Type)
+			Log.Panicf("bad default: %d", t.Type)
 		}
 	}
 
 	if len(vec) == 0 {
-		log.Panicf("Error parsing expression; perhaps an operator followed by no expression: %q %q", tt[i-1].Str, tt[i].Str)
+		Log.Panicf("Error parsing expression; perhaps an operator followed by no expression: %q %q", tt[i-1].Str, tt[i].Str)
 	}
 	if len(vec) > 1 {
 		return &List{vec}, i
 	}
-	log.Printf("ParseExpr returns VEC=%v; i=%d", vec, i)
+	Log.Printf("ParseExpr returns VEC=%v; i=%d", vec, i)
 	return vec[0], i
 }

@@ -2,7 +2,6 @@ package livy
 
 import (
 	"fmt"
-	"log"
 	"runtime/debug"
 )
 
@@ -78,7 +77,7 @@ type Subscript struct {
 func (o Variable) Eval(c *Context) Val {
 	z, ok := c.Globals[o.S]
 	if !ok {
-		log.Panicf("No such variable %q in Globals %#v", o.S, c.Globals)
+		Log.Panicf("No such variable %q in Globals %#v", o.S, c.Globals)
 	}
 	return z
 }
@@ -95,13 +94,13 @@ func (o Monad) Eval(c *Context) Val {
 	case OperatorToken:
 		fn, ok = c.Monadics[o.Op]
 		if !ok {
-			log.Panicf("No such monadaic operator %q", o.Op)
+			Log.Panicf("No such monadaic operator %q", o.Op)
 		}
 	case ReduceToken:
 		op1 := o.Token.Match[1]
 		fn1, ok := c.Dyadics[op1]
 		if !ok {
-			log.Panicf("Reduce syntax: No such dyadaic operator %q", op1)
+			Log.Panicf("Reduce syntax: No such dyadaic operator %q", op1)
 		}
 		identity, ok := IdentityValueOfDyadic[op1]
 		if !ok {
@@ -112,7 +111,7 @@ func (o Monad) Eval(c *Context) Val {
 		op1 := o.Token.Match[1]
 		fn1, ok := c.Dyadics[op1]
 		if !ok {
-			log.Panicf("Scan syntax: No such dyadaic operator %q", op1)
+			Log.Panicf("Scan syntax: No such dyadaic operator %q", op1)
 		}
 		identity, ok := IdentityValueOfDyadic[op1]
 		if !ok {
@@ -123,19 +122,19 @@ func (o Monad) Eval(c *Context) Val {
 		op1 := o.Token.Match[1]
 		fn1, ok := c.Monadics[op1]
 		if !ok {
-			log.Panicf("Each syntax: No such dyadaic operator %q", op1)
+			Log.Panicf("Each syntax: No such dyadaic operator %q", op1)
 		}
 		fn = MkEachOp(o.Token.Str, fn1)
 	}
 
 	b := o.B.Eval(c)
-	log.Printf("Monad:Eval %s %s -> ?", o.Op, b)
+	Log.Printf("Monad:Eval %s %s -> ?", o.Op, b)
 	axis := DefaultAxis
 	if o.Axis != nil {
 		axis = o.Axis.Eval(c).GetScalarInt()
 	}
 	z := fn(c, b, axis)
-	log.Printf("Monad:Eval %s %s -> %s", o.Op, b, z)
+	Log.Printf("Monad:Eval %s %s -> %s", o.Op, b, z)
 	return z
 }
 
@@ -147,11 +146,11 @@ func (o Dyad) Assign(c *Context) Val {
 
 	case *Variable:
 		c.Globals[t.S] = b
-		log.Printf("Assigning %s = %s", t.S, b)
+		Log.Printf("Assigning %s = %s", t.S, b)
 		return b
 
 	default:
-		log.Panicf("cannot assign to %s", o.A)
+		Log.Panicf("cannot assign to %s", o.A)
 		panic(0)
 	}
 }
@@ -164,26 +163,26 @@ func (o Dyad) Eval(c *Context) Val {
 	case OperatorToken:
 		fn1, ok := c.Dyadics[o.Op]
 		if !ok {
-			log.Panicf("No such dyadaic operator %q", o.Op)
+			Log.Panicf("No such dyadaic operator %q", o.Op)
 		}
 		fn = fn1
 	case InnerProductToken:
 		op1 := o.Token.Match[1]
 		fn1, ok := c.Dyadics[op1]
 		if !ok {
-			log.Panicf("Inner product syntax: No such dyadaic operator %q", op1)
+			Log.Panicf("Inner product syntax: No such dyadaic operator %q", op1)
 		}
 		op2 := o.Token.Match[2]
 		fn2, ok := c.Dyadics[op2]
 		if !ok {
-			log.Panicf("Inner product syntax: No such dyadaic operator %q", op2)
+			Log.Panicf("Inner product syntax: No such dyadaic operator %q", op2)
 		}
 		fn = MkInnerProduct(o.Token.Str, fn1, fn2)
 	case OuterProductToken:
 		op1 := o.Token.Match[1]
 		fn1, ok := c.Dyadics[op1]
 		if !ok {
-			log.Panicf("Outer product syntax: No such dyadaic operator %q", op1)
+			Log.Panicf("Outer product syntax: No such dyadaic operator %q", op1)
 		}
 		fn = MkOuterProduct(o.Token.Str, fn1)
 	}
@@ -193,9 +192,9 @@ func (o Dyad) Eval(c *Context) Val {
 		axis = o.Axis.Eval(c).GetScalarInt()
 	}
 	b := o.B.Eval(c)
-	log.Printf("Dyad:Eval %s %s %s -> ?", a, o.Op, b)
+	Log.Printf("Dyad:Eval %s %s %s -> ?", a, o.Op, b)
 	z := fn(c, a, b, axis)
-	log.Printf("Dyad:Eval %s %s %s -> %s", a, o.Op, b, z)
+	Log.Printf("Dyad:Eval %s %s %s -> %s", a, o.Op, b, z)
 	return z
 }
 
@@ -332,11 +331,11 @@ func (o Subscript) PreEval(c *Context) (mat *Mat, newShape []int, subscripts [][
 	lhs := o.Matrix.Eval(c)
 	mat, ok = lhs.(*Mat)
 	if !ok {
-		log.Panicf("Cannot subscript non-matrix: %s", lhs)
+		Log.Panicf("Cannot subscript non-matrix: %s", lhs)
 	}
 	rank := len(mat.S)
 	if len(o.Vec) != rank {
-		log.Panicf("Number of subscripts %d does not match rank %d of matrix: %s", len(o.Vec), rank, lhs)
+		Log.Panicf("Number of subscripts %d does not match rank %d of matrix: %s", len(o.Vec), rank, lhs)
 	}
 
 	for i, sub := range o.Vec {
@@ -368,23 +367,23 @@ func (o Subscript) Eval(c *Context) Val {
 func (o Subscript) Assign(c *Context, b Val) Val {
 	bmat, ok := b.(*Mat)
 	if !ok {
-		log.Panicf("Cannot assign non-matrix to subscripted variable: %v", b)
+		Log.Panicf("Cannot assign non-matrix to subscripted variable: %v", b)
 	}
 
 	avar, ok := o.Matrix.(*Variable)
 	if !ok {
-		log.Panicf("Cannot assign to subscripted non-variable: %s", o.Matrix)
+		Log.Panicf("Cannot assign to subscripted non-variable: %s", o.Matrix)
 	}
 
 	aval := avar.Eval(c)
 	amat, ok := aval.(*Mat)
 	if !ok {
-		log.Panicf("Cannot assign to subscripted non-matrix variable: %s", amat)
+		Log.Panicf("Cannot assign to subscripted non-matrix variable: %s", amat)
 	}
 
 	rank := len(amat.S)
 	if len(o.Vec) != rank {
-		log.Panicf("Number of subscripts %d does not match rank %d of matrix: %s", len(o.Vec), rank, aval)
+		Log.Panicf("Number of subscripts %d does not match rank %d of matrix: %s", len(o.Vec), rank, aval)
 	}
 
 	// Replace mat with a copy, that can be modified.
@@ -413,7 +412,7 @@ func (o Subscript) Assign(c *Context, b Val) Val {
 	oldOff := 0
 	var recurse func(subscripts [][]int, newShape []int, newOff int)
 	recurse = func(subscripts [][]int, newShape []int, newOff int) {
-		log.Printf("subscripts=%v newShape=%v newOff=%d oldOff=%d", subscripts, newShape, newOff, oldOff)
+		Log.Printf("subscripts=%v newShape=%v newOff=%d oldOff=%d", subscripts, newShape, newOff, oldOff)
 		if len(newShape) == 0 {
 			matM[newOff] = bmat.M[oldOff]
 			oldOff++
@@ -530,6 +529,6 @@ func float2bool(f float64) bool {
 	if f == 0.0 {
 		return false
 	}
-	log.Panicf("Cannot use %.18g as a bool", f)
+	Log.Panicf("Cannot use %.18g as a bool", f)
 	panic(0)
 }

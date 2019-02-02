@@ -3,7 +3,6 @@ package livy
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"reflect"
 )
 
@@ -104,7 +103,7 @@ func (o Mat) Pretty() string {
 		return "(* TODO: Mat rank 0 *) " /* + o.M[0].Pretty() */
 	case 1:
 		if len(o.M) != o.S[0] {
-			log.Panicf("matrix shape %v but contains %d elements: %#v", o.S, len(o.M), o)
+			Log.Panicf("matrix shape %v but contains %d elements: %#v", o.S, len(o.M), o)
 		}
 		for _, v := range o.M {
 			bb.WriteString(v.String())
@@ -130,7 +129,7 @@ func (o Mat) Pretty() string {
 					s = " " + s
 				}
 				ss[i] = s
-				log.Printf("%d/%d/%q", i, len(ss[i]), ss[i])
+				Log.Printf("%d/%d/%q", i, len(ss[i]), ss[i])
 			}
 		}
 
@@ -143,13 +142,13 @@ func (o Box) Pretty() string {
 }
 
 func (o Char) GetScalarInt() int {
-	log.Panicf("Char cannot be a Scalar Int: '%c'", o.R)
+	Log.Panicf("Char cannot be a Scalar Int: '%c'", o.R)
 	panic(0)
 }
 func (o Num) GetScalarInt() int {
 	a := int(o.F)
 	if float64(a) != o.F {
-		log.Panicf("Not an integer: %g", o.F)
+		Log.Panicf("Not an integer: %g", o.F)
 	}
 	return a
 }
@@ -157,16 +156,16 @@ func (o Mat) GetScalarInt() int {
 	if len(o.M) == 1 {
 		return o.M[0].GetScalarInt()
 	}
-	log.Panicf("Matrix with %d entries cannot be a Scalar Int", len(o.M))
+	Log.Panicf("Matrix with %d entries cannot be a Scalar Int", len(o.M))
 	panic(0)
 }
 func (o Box) GetScalarInt() int {
-	log.Panicf("Box cannot be a Scalar Int")
+	Log.Panicf("Box cannot be a Scalar Int")
 	panic(0)
 }
 
 func (o Char) GetScalarFloat() float64 {
-	log.Panicf("Char cannot be a Scalar Float: '%c'", o.R)
+	Log.Panicf("Char cannot be a Scalar Float: '%c'", o.R)
 	panic(0)
 }
 func (o Num) GetScalarFloat() float64 {
@@ -176,11 +175,11 @@ func (o Mat) GetScalarFloat() float64 {
 	if len(o.M) == 1 {
 		return o.M[1].GetScalarFloat()
 	}
-	log.Panicf("Matrix with %d entries cannot be a Scalar Float", len(o.M))
+	Log.Panicf("Matrix with %d entries cannot be a Scalar Float", len(o.M))
 	panic(0)
 }
 func (o Box) GetScalarFloat() float64 {
-	log.Panicf("Box cannot be a Scalar Float")
+	Log.Panicf("Box cannot be a Scalar Float")
 	panic(0)
 }
 
@@ -255,7 +254,7 @@ func (o Box) ValEnum() ValEnum {
 func (a Char) Compare(x Val) int {
 	b, ok := x.(*Char)
 	if !ok {
-		log.Panicf("Char::Compare to not-a-Char: %#v", x)
+		Log.Panicf("Char::Compare to not-a-Char: %#v", x)
 	}
 	switch {
 	case a.R < b.R:
@@ -270,7 +269,7 @@ func (a Char) Compare(x Val) int {
 func (a Num) Compare(x Val) int {
 	b, ok := x.(*Num)
 	if !ok {
-		log.Panicf("Num::Compare to not-a-Num: %v", x)
+		Log.Panicf("Num::Compare to not-a-Num: %v", x)
 	}
 	switch {
 	case a.F < b.F:
@@ -285,7 +284,7 @@ func (a Num) Compare(x Val) int {
 func (a Mat) Compare(x Val) int {
 	b, ok := x.(*Mat)
 	if !ok {
-		log.Panicf("Mat::Compare to not-a-Mat: %v", x)
+		Log.Panicf("Mat::Compare to not-a-Mat: %v", x)
 	}
 	switch {
 	case len(a.S) < len(b.S):
@@ -312,7 +311,7 @@ func (a Mat) Compare(x Val) int {
 func (a Box) Compare(x Val) int {
 	b, ok := x.(*Box)
 	if !ok {
-		log.Panicf("Box::Compare to not-a-Box: %v", x)
+		Log.Panicf("Box::Compare to not-a-Box: %v", x)
 	}
 	aa := reflect.ValueOf(a).Pointer()
 	bb := reflect.ValueOf(b).Pointer()

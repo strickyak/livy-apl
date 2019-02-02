@@ -1,3 +1,5 @@
+// +build main
+
 package main
 
 import (
@@ -15,6 +17,10 @@ import (
 	"strings"
 
 	"github.com/chzyer/readline"
+
+	extend "github.com/strickyak/livy-apl/extend"
+	_ "github.com/yak-labs/chirp-lang/goapi/default"
+	_ "github.com/yak-labs/chirp-lang/posix"
 )
 
 var Prompt = flag.String("prompt", "      ", "APL interpreter prompt")
@@ -77,6 +83,7 @@ func main() {
 		Dyadics:  StandardDyadics,
 		Extra:    make(map[string]interface{}),
 	}
+	extend.Init(c)
 	c.Globals["Pi"] = &Num{math.Pi}
 	c.Globals["Tau"] = &Num{2.0 * math.Pi}
 	c.Globals["E"] = &Num{math.E}

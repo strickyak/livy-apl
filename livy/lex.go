@@ -2,7 +2,6 @@ package livy
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 )
 
@@ -105,25 +104,25 @@ func (x Lex) String() string {
 }
 
 func Tokenize(s string) *Lex {
-	// log.Printf("TOKENIZE %q", s)
+	// Log.Printf("TOKENIZE %q", s)
 	lex := &Lex{
 		Source: s,
 	}
 	for lex.DoNextToken() {
-		// log.Printf("LEX... %s", *lex)
+		// Log.Printf("LEX... %s", *lex)
 		continue
 	}
-	// log.Printf("LEX... %s", *lex)
+	// Log.Printf("LEX... %s", *lex)
 
 	llt := len(lex.Tokens)
 	if llt == 0 || lex.Tokens[llt-1].Type != EndToken {
-		log.Panicf("Syntax error after %q before %q", s[:lex.p], s[lex.p:])
+		Log.Panicf("Syntax error after %q before %q", s[:lex.p], s[lex.p:])
 	}
 	if lex.p != len(s) {
-		log.Panicf("OHNO did not parse all of %q: %d", s, lex.p)
+		Log.Panicf("OHNO did not parse all of %q: %d", s, lex.p)
 	}
 	for i, t := range lex.Tokens {
-		log.Printf("Token [%d]: %s", i, t)
+		Log.Printf("Token [%d]: %s", i, t)
 	}
 	return lex
 }

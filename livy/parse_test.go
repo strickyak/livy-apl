@@ -1,7 +1,6 @@
 package livy
 
 import (
-	"log"
 	"math"
 	"reflect"
 	"testing"
@@ -36,7 +35,7 @@ func TestMonadic(t *testing.T) {
 		lex := Tokenize(test.src)
 		p := &Parser{}
 		expr, _ := p.ParseExpr(lex, 0)
-		log.Printf("EXPR: %s", expr)
+		Log.Printf("EXPR: %s", expr)
 		got := expr.String()
 
 		if got != test.want {
@@ -287,14 +286,14 @@ var evalTests = []srcWantPair{
 
 func TestEval(t *testing.T) {
 	for _, test := range evalTests {
-		log.Printf("TestEval <<< %q", test.src)
+		Log.Printf("TestEval <<< %q", test.src)
 		c := Standard()
 		lex := Tokenize(test.src)
 		p := &Parser{}
 		expr, _ := p.ParseSeq(lex, 0)
 		got := expr.Eval(c)
-		log.Printf("TestEval === %q", test.src)
-		log.Printf("TestEval >>> %v", got)
+		Log.Printf("TestEval === %q", test.src)
+		Log.Printf("TestEval >>> %v", got)
 
 		if got.String() != test.want {
 			t.Errorf("Got %q, wanted %q, for src %q", got, test.want, test.src)

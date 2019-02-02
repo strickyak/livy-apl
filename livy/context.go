@@ -1,10 +1,14 @@
 package livy
 
 import (
+	"flag"
 	"fmt"
+	"log"
 	"os"
 	"sort"
 )
+
+var Log *log.Logger = log.New(os.Stderr, "livy: ", 0)
 
 type StringExtensionFunc func(s string) Expression
 

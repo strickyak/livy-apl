@@ -1,7 +1,6 @@
 package livy
 
 import (
-	"log"
 	"math"
 	"sort"
 )
@@ -93,7 +92,7 @@ var IdentityValueOfDyadic = map[string]Val{
 // mod forcing positive result, since I don't actually know what Go does.
 func mod(x int, modulus int) int {
 	if modulus < 1 {
-		log.Panicf("Nonpositive modulus: %d", modulus)
+		Log.Panicf("Nonpositive modulus: %d", modulus)
 	}
 	return ((x % modulus) + modulus) % modulus
 }
@@ -138,25 +137,25 @@ func MkInnerProduct(name string, fn1, fn2 DyadicFunc) DyadicFunc {
 	return func(c *Context, a Val, b Val, axis int) Val {
 		mat1, ok := a.(*Mat)
 		if !ok {
-			log.Panicf("LHS of inner product %q not a matrix: %v", name, a)
+			Log.Panicf("LHS of inner product %q not a matrix: %v", name, a)
 		}
 
 		mat2, ok := b.(*Mat)
 		if !ok {
-			log.Panicf("RHS of inner product %q not a matrix: %v", name, b)
+			Log.Panicf("RHS of inner product %q not a matrix: %v", name, b)
 		}
 
 		vec1, vec2 := mat1.M, mat2.M
 		shape1, shape2 := mat1.S, mat2.S
 		rank1, rank2 := len(shape1), len(shape2)
 		if rank1 < 1 {
-			log.Panicf("LHS of inner product %q has rank 0: %v", name, a)
+			Log.Panicf("LHS of inner product %q has rank 0: %v", name, a)
 		}
 		if rank2 < 1 {
-			log.Panicf("RHS of inner product %q has rank 0: %v", name, b)
+			Log.Panicf("RHS of inner product %q has rank 0: %v", name, b)
 		}
 		if shape1[rank1-1] != shape2[0] {
-			log.Panicf("Dimension conflict in inner product %q: LHS is shape %v; RHS is shape %v", name, shape1, shape2)
+			Log.Panicf("Dimension conflict in inner product %q: LHS is shape %v; RHS is shape %v", name, shape1, shape2)
 		}
 
 		var outShape []int
@@ -170,17 +169,17 @@ func MkInnerProduct(name string, fn1, fn2 DyadicFunc) DyadicFunc {
 		innerStride1 := 1
 		innerStride2 := MulReduce(shape2[1:])
 		innerLength := shape2[0]
-		log.Printf("innerStride 1:%d 2:%d innerLength:%d", innerStride1, innerStride2, innerLength)
+		Log.Printf("innerStride 1:%d 2:%d innerLength:%d", innerStride1, innerStride2, innerLength)
 
 		var recurse func(shape1, shape2 []int, off1, off2 int, outShape []int, outOff int)
 		recurse = func(shape1, shape2 []int, off1, off2 int, outShape []int, outOff int) {
 			rank1, rank2, outRank := len(shape1), len(shape2), len(outShape)
-			log.Printf("Rank(%d,%d -> %d) : shape( %v , %v -> %v ) : off (%d,%d -> %d)", rank1, rank2, outRank, shape1, shape2, outShape, off1, off2, outOff)
+			Log.Printf("Rank(%d,%d -> %d) : shape( %v , %v -> %v ) : off (%d,%d -> %d)", rank1, rank2, outRank, shape1, shape2, outShape, off1, off2, outOff)
 			if outRank == 0 {
 				j := innerLength - 1
 				rhs := fn2(c, vec1[off1+j*innerStride1], vec2[off2+j*innerStride2], -1)
 				for i := innerLength - 2; i >= 0; i-- {
-					log.Printf(" rhs=%v [i=%d] vec1[%d] vec2[%d]", rhs, i, off1+i*innerStride1, off2+i*innerStride2)
+					Log.Printf(" rhs=%v [i=%d] vec1[%d] vec2[%d]", rhs, i, off1+i*innerStride1, off2+i*innerStride2)
 					lhs := fn2(c, vec1[off1+i*innerStride1], vec2[off2+i*innerStride2], -1)
 					rhs = fn1(c, lhs, rhs, -1)
 				}
@@ -215,19 +214,19 @@ func MkReduceOrScanOp(name string, fn DyadicFunc, identity Val, toScan bool) Mon
 	return func(c *Context, a Val, axis int) Val {
 		mat, ok := a.(*Mat)
 		if !ok {
-			log.Panicf("Cannot %s %s on non-matrix: %s", name, verb, a)
+			Log.Panicf("Cannot %s %s on non-matrix: %s", name, verb, a)
 		}
 		oldRank := len(mat.S)
 		oldShape := mat.S
-		log.Printf("oldShape %v oldRank %v for matrix %v", oldShape, oldRank, mat)
+		Log.Printf("oldShape %v oldRank %v for matrix %v", oldShape, oldRank, mat)
 		if oldRank == 0 {
-			log.Panicf("Cannot %s %s on scalar: %s", name, verb, mat)
+			Log.Panicf("Cannot %s %s on scalar: %s", name, verb, mat)
 		}
 		if axis < 0 {
 			axis += oldRank
 		}
 		if axis < 0 || axis > oldRank-1 {
-			log.Panicf("Reduce axis [%d] is bad for %s %s of rank %d", axis, name, verb, oldRank)
+			Log.Panicf("Reduce axis [%d] is bad for %s %s of rank %d", axis, name, verb, oldRank)
 		}
 
 		var newShape []int
@@ -246,13 +245,13 @@ func MkReduceOrScanOp(name string, fn DyadicFunc, identity Val, toScan bool) Mon
 		oldVec := mat.M
 
 		reduceStride, reduceLen := MulReduce(oldShape[axis+1:]), oldShape[axis]
-		log.Printf("Reduce Stride = %d", reduceStride)
+		Log.Printf("Reduce Stride = %d", reduceStride)
 		revAxis := oldRank - axis
 
 		var reduce func(oldShape []int, oldOffset int, newShape []int, newOffset int, reduceOffset int)
 		reduce = func(oldShape []int, oldOffset int, newShape []int, newOffset int, reduceOffset int) {
 			rank := len(oldShape)
-			log.Printf("[[%d]] ;; old %d @ %v ;; new %d @ %v ;; {ro=%d,rs=%d,revAxis=%d}", rank, oldOffset, oldShape, newOffset, newShape, reduceOffset, reduceStride, revAxis)
+			Log.Printf("[[%d]] ;; old %d @ %v ;; new %d @ %v ;; {ro=%d,rs=%d,revAxis=%d}", rank, oldOffset, oldShape, newOffset, newShape, reduceOffset, reduceStride, revAxis)
 			if rank == 0 {
 				var reduction Val
 
@@ -263,22 +262,22 @@ func MkReduceOrScanOp(name string, fn DyadicFunc, identity Val, toScan bool) Mon
 					reduction = oldVec[oldOffset]
 					if toScan {
 						newVec[newOffset] = reduction
-						log.Printf("Scan...0  newVec: %v [[%d; %s]]", newVec, newOffset, reduction)
+						Log.Printf("Scan...0  newVec: %v [[%d; %s]]", newVec, newOffset, reduction)
 					}
 					// other j's:
 					for j := 1; j < reduceLen; j++ {
-						log.Printf("...... %d [[%d; %s]]", j, newOffset, reduction)
+						Log.Printf("...... %d [[%d; %s]]", j, newOffset, reduction)
 						reduction = fn(c, reduction, oldVec[oldOffset+j*reduceStride], DefaultAxis)
 						if toScan {
 							newVec[newOffset+j*reduceStride] = reduction
-							log.Printf("Scan...%d  newVec: %v [[%d; %s]]", j, newVec, newOffset+j*reduceStride, reduction)
+							Log.Printf("Scan...%d  newVec: %v [[%d; %s]]", j, newVec, newOffset+j*reduceStride, reduction)
 						}
 					}
 				}
 
 				if !toScan {
 					newVec[newOffset] = reduction
-					log.Printf("Reduction...  newVec: %v [[%d; %s]]", newVec, newOffset, reduction)
+					Log.Printf("Reduction...  newVec: %v [[%d; %s]]", newVec, newOffset, reduction)
 				}
 			} else if len(oldShape) == revAxis {
 				// This is the old dimension we reduce.
@@ -290,7 +289,7 @@ func MkReduceOrScanOp(name string, fn DyadicFunc, identity Val, toScan bool) Mon
 				if toScan {
 					newShape = newShape[1:]
 				}
-				log.Printf("111 reduceOffset = %d ;; old %d @ %v ;; new %d @ %v -->", oldOffset, reduceOffset, oldShape, newOffset, newShape)
+				Log.Printf("111 reduceOffset = %d ;; old %d @ %v ;; new %d @ %v -->", oldOffset, reduceOffset, oldShape, newOffset, newShape)
 				reduce(oldShape[1:], oldOffset, newShape, newOffset, oldOffset)
 			} else {
 				for i := 0; i < oldShape[0]; i++ {
@@ -328,7 +327,7 @@ func dyadicRho(c *Context, a Val, b Val, axis int) Val {
 	bm := asMat(b)
 
 	if outSize > 0 && bm == nil {
-		log.Panicf("Cannot resize empty matrix to shape %v", spec)
+		Log.Panicf("Cannot resize empty matrix to shape %v", spec)
 	}
 
 	if len(spec) == 0 {
@@ -410,11 +409,11 @@ func WrapMatMatDyadic(fn DyadicFunc) DyadicFunc {
 					for i := 0; i < n; i++ {
 						x1 := x.M[i].GetScalarOrNil()
 						if x1 == nil {
-							log.Panicf("LHS not a scalar at matrix offset %d: %s", i, x1)
+							Log.Panicf("LHS not a scalar at matrix offset %d: %s", i, x1)
 						}
 						y1 := y.M[i].GetScalarOrNil()
 						if y1 == nil {
-							log.Panicf("RHS not a scalar at matrix offset %d: %s", i, y1)
+							Log.Panicf("RHS not a scalar at matrix offset %d: %s", i, y1)
 						}
 						vec[i] = fn(c, x1, y1, axis)
 					}
@@ -430,7 +429,7 @@ func WrapMatMatDyadic(fn DyadicFunc) DyadicFunc {
 				for i := 0; i < n; i++ {
 					x1 := x.M[i].GetScalarOrNil()
 					if x1 == nil {
-						log.Panicf("LHS not a scalar at matrix offset %d: %s", i, x1)
+						Log.Panicf("LHS not a scalar at matrix offset %d: %s", i, x1)
 					}
 					vec[i] = fn(c, x1, ys, axis)
 				}
@@ -439,11 +438,11 @@ func WrapMatMatDyadic(fn DyadicFunc) DyadicFunc {
 			}
 		}
 
-		//log.Printf("ONE %s", a)
+		//Log.Printf("ONE %s", a)
 		xs := a.GetScalarOrNil()
-		//log.Printf("TWO %s", xs)
+		//Log.Printf("TWO %s", xs)
 		if xs == nil {
-			log.Panicf("LHS neither matching matrix nor scalar: %s", a)
+			Log.Panicf("LHS neither matching matrix nor scalar: %s", a)
 		}
 
 		switch y := b.(type) {
@@ -455,7 +454,7 @@ func WrapMatMatDyadic(fn DyadicFunc) DyadicFunc {
 				for i := 0; i < n; i++ {
 					y1 := y.M[i].GetScalarOrNil()
 					if y1 == nil {
-						log.Panicf("RHS not a scalar at matrix offset %d: %s", i, y1)
+						Log.Panicf("RHS not a scalar at matrix offset %d: %s", i, y1)
 					}
 					vec[i] = fn(c, xs, y1, axis)
 				}
@@ -466,7 +465,7 @@ func WrapMatMatDyadic(fn DyadicFunc) DyadicFunc {
 
 		ys := b.GetScalarOrNil()
 		if ys == nil {
-			log.Panicf("RHS neither matrix nor scalar: %s", b)
+			Log.Panicf("RHS neither matrix nor scalar: %s", b)
 		}
 		return fn(c, xs, ys, axis)
 	}
@@ -480,14 +479,14 @@ func GetVectorOfScalarVals(a Val) []Val {
 		// degenerate vector from scalar.
 		y := a.GetScalarOrNil()
 		if y == nil {
-			log.Panicf("GetVectorOfScalarVals: neither vector nor scalar: %v", a)
+			Log.Panicf("GetVectorOfScalarVals: neither vector nor scalar: %v", a)
 		}
 		z = append(z, y)
 	} else {
 		for _, x := range mat.M {
 			y := x.GetScalarOrNil()
 			if y == nil {
-				log.Panicf("GetVectorOfScalarVals: item not scalar")
+				Log.Panicf("GetVectorOfScalarVals: item not scalar")
 			}
 			z = append(z, y)
 		}
@@ -578,7 +577,7 @@ func dyadicRot(c *Context, a Val, b Val, axis int) Val {
 	recurse = func(inShape []int, inOff int, outShape []int, outOff int) {
 		switch len(outShape) {
 		case 0:
-			// log.Printf("Assign out [%d] <- in [%d]", outOff, inOff)
+			// Log.Printf("Assign out [%d] <- in [%d]", outOff, inOff)
 			outVec[outOff] = inVec[inOff]
 		case revaxis:
 			inStride := MulReduce(inShape[1:])
@@ -623,17 +622,17 @@ func dyadicDrop(c *Context, a Val, b Val, axis int) Val {
 }
 func dyadicTakeOrDrop(c *Context, a Val, b Val, axis int, dropping bool) Val {
 	if axis != -1 {
-		log.Panicf("Cannot specify axis for take or drop: %d", axis)
+		Log.Panicf("Cannot specify axis for take or drop: %d", axis)
 	}
 	spec := GetVectorOfScalarInts(a)
 	mat, ok := b.(*Mat)
 	if !ok {
-		log.Panicf("Dyadic Take wants matrix on right, but got %#v", b)
+		Log.Panicf("Dyadic Take wants matrix on right, but got %#v", b)
 	}
 	inVec := mat.M
 	inShape := mat.S
 	if len(spec) != len(inShape) {
-		log.Panicf("Dyadic Take wants them to be the same, but len(LHS) == %d and len(shape(RHS)) == %d", len(spec), len(inShape))
+		Log.Panicf("Dyadic Take wants them to be the same, but len(LHS) == %d and len(shape(RHS)) == %d", len(spec), len(inShape))
 	}
 
 	// Figure out the outShape (how many to copy) and the inStart (where to start copying from).
@@ -642,7 +641,7 @@ func dyadicTakeOrDrop(c *Context, a Val, b Val, axis int, dropping bool) Val {
 	for i, sz := range inShape {
 		k := abs(spec[i])
 		if k > sz {
-			log.Panicf("Dyadic Take LHS[%d] abs too big, is %d; RHS shape is %v", i, spec[i], inShape)
+			Log.Panicf("Dyadic Take LHS[%d] abs too big, is %d; RHS shape is %v", i, spec[i], inShape)
 		}
 		if dropping {
 			k = sz - k // k is how many to keep.
@@ -656,14 +655,14 @@ func dyadicTakeOrDrop(c *Context, a Val, b Val, axis int, dropping bool) Val {
 	}
 	outVec := make([]Val, MulReduce(outShape))
 
-	log.Printf("inStart %v", inStart)
-	log.Printf("inShape %v", inShape)
-	log.Printf("outShape %v", outShape)
+	Log.Printf("inStart %v", inStart)
+	Log.Printf("inShape %v", inShape)
+	Log.Printf("outShape %v", outShape)
 
 	var recurse func(inStart []int, inShape []int, inOff int, outShape []int, outOff int)
 	recurse = func(inStart []int, inShape []int, inOff int, outShape []int, outOff int) {
 		if len(inStart) == 0 {
-			log.Printf("CP %d <= %d", outOff, inOff)
+			Log.Printf("CP %d <= %d", outOff, inOff)
 			outVec[outOff] = inVec[inOff]
 			return
 		}
@@ -686,7 +685,7 @@ func dyadicCompress(c *Context, a Val, b Val, axis int) Val {
 func dyadicExpandOrCompress(c *Context, a Val, b Val, axis int, compressing bool, name string) Val {
 	mat, ok := b.(*Mat)
 	if !ok {
-		log.Panicf("dyadic %s wants matrix on right, but got %#v", name, b)
+		Log.Panicf("dyadic %s wants matrix on right, but got %#v", name, b)
 	}
 	inVec := mat.M
 	inShape := mat.S
@@ -714,13 +713,13 @@ func dyadicExpandOrCompress(c *Context, a Val, b Val, axis int, compressing bool
 			}
 		case 1:
 			if srcPos == srcAxisShape {
-				log.Panicf("Dyadic %s axis is not wide enough: got LHS == %v; RHS shape is %v", name, spec, inShape)
+				Log.Panicf("Dyadic %s axis is not wide enough: got LHS == %v; RHS shape is %v", name, spec, inShape)
 			}
 			plan = append(plan, srcPos)
 			srcPos++
 			destLen++
 		default:
-			log.Panicf("dyadic %s has non-boolean element on LHS: %v", name, spec)
+			Log.Panicf("dyadic %s has non-boolean element on LHS: %v", name, spec)
 		}
 	}
 
@@ -738,10 +737,10 @@ func dyadicExpandOrCompress(c *Context, a Val, b Val, axis int, compressing bool
 	recurse = func(inShape []int, inOff int, outShape []int, outOff int) {
 		if len(outShape) == 0 {
 			if inOff == -1 {
-				log.Printf("ZERO %d", outOff)
+				Log.Printf("ZERO %d", outOff)
 				outVec[outOff] = &Num{0.0}
 			} else {
-				log.Printf("CP %d <= %d", outOff, inOff)
+				Log.Printf("CP %d <= %d", outOff, inOff)
 				outVec[outOff] = inVec[inOff]
 			}
 			return
@@ -779,12 +778,12 @@ func dyadicExpandOrCompress(c *Context, a Val, b Val, axis int, compressing bool
 func dyadicCatenate(c *Context, a Val, b Val, axis int) Val {
 	ma, ok := a.(*Mat)
 	if !ok {
-		log.Panicf("Dyadic `,` wants matrix on left, but got %#v", a)
+		Log.Panicf("Dyadic `,` wants matrix on left, but got %#v", a)
 	}
 
 	mb, ok := b.(*Mat)
 	if !ok {
-		log.Panicf("Dyadic `,` wants matrix on right, but got %#v", b)
+		Log.Panicf("Dyadic `,` wants matrix on right, but got %#v", b)
 	}
 
 	aVec := ma.M
@@ -795,7 +794,7 @@ func dyadicCatenate(c *Context, a Val, b Val, axis int) Val {
 	bRank := len(bShape)
 
 	if aRank != bRank {
-		log.Panicf("Dyadic `,` wants same rank, but left shape is %v and right shape is %v", aShape, bShape)
+		Log.Panicf("Dyadic `,` wants same rank, but left shape is %v and right shape is %v", aShape, bShape)
 	}
 	axis = mod(axis, aRank)
 
@@ -805,12 +804,12 @@ func dyadicCatenate(c *Context, a Val, b Val, axis int) Val {
 			outShape = append(outShape, aShape[i]+bShape[i])
 		} else {
 			if aShape[i] != bShape[i] {
-				log.Panicf("Dyadic `,` wants same shape except for axis dimension %d, but left shape is %v and right shape is %v", axis, aShape, bShape)
+				Log.Panicf("Dyadic `,` wants same shape except for axis dimension %d, but left shape is %v and right shape is %v", axis, aShape, bShape)
 			}
 			outShape = append(outShape, aShape[i])
 		}
 	}
-	log.Printf("Concatenate: lhs %v rhs %v out %v", aShape, bShape, outShape)
+	Log.Printf("Concatenate: lhs %v rhs %v out %v", aShape, bShape, outShape)
 
 	outVec := make([]Val, MulReduce(outShape))
 	var inVec []Val
@@ -841,7 +840,7 @@ func dyadicCatenate(c *Context, a Val, b Val, axis int) Val {
 func dyadicTranspose(c *Context, a Val, b Val, axis int) Val {
 	mat, ok := b.(*Mat)
 	if !ok {
-		log.Panicf("Dyadic `transpose` wants matrix on right, but got %#v", b)
+		Log.Panicf("Dyadic `transpose` wants matrix on right, but got %#v", b)
 	}
 
 	inVec := mat.M
@@ -850,7 +849,7 @@ func dyadicTranspose(c *Context, a Val, b Val, axis int) Val {
 
 	spec := GetVectorOfScalarInts(a)
 	if len(spec) != inRank {
-		log.Panicf("Dyadic `transpose` wants length of lhs %d to match rank of rhs %d", len(spec), inRank)
+		Log.Panicf("Dyadic `transpose` wants length of lhs %d to match rank of rhs %d", len(spec), inRank)
 	}
 	for i := range spec {
 		spec[i] = mod(spec[i], inRank)
@@ -859,7 +858,7 @@ func dyadicTranspose(c *Context, a Val, b Val, axis int) Val {
 	outRank := 0
 	for _, e := range spec {
 		if e < 0 || e >= len(spec) {
-			log.Panicf("Dyadic `transpose` finds %d on lhs, not a valid dimensio in lhs %v", e, spec)
+			Log.Panicf("Dyadic `transpose` finds %d on lhs, not a valid dimensio in lhs %v", e, spec)
 		}
 		if e+1 > outRank {
 			outRank = e + 1
@@ -868,11 +867,11 @@ func dyadicTranspose(c *Context, a Val, b Val, axis int) Val {
 	outShape := make([]int, outRank)
 	stride := make([]int, outRank)
 	for i, e := range spec {
-		//log.Printf("i=%d e=%d, outShape<<%v", i, e, outShape)
+		//Log.Printf("i=%d e=%d, outShape<<%v", i, e, outShape)
 		outShape[e] = inShape[i]
 		// If this happens more than once, it is a diagonal:
 		stride[e] += MulReduce(inShape[i+1:])
-		//log.Printf("outShape>>%v; stride>>%v", outShape, stride)
+		//Log.Printf("outShape>>%v; stride>>%v", outShape, stride)
 	}
 
 	var outVec []Val
@@ -881,12 +880,12 @@ func dyadicTranspose(c *Context, a Val, b Val, axis int) Val {
 	recurse = func(outShape []int, inOff int, stride []int) {
 		if len(outShape) == 0 {
 			outVec = append(outVec, inVec[inOff])
-			//log.Printf("inOff %d outVec %v", inOff, outVec)
+			//Log.Printf("inOff %d outVec %v", inOff, outVec)
 			return
 		}
 
 		for i := 0; i < outShape[0]; i++ {
-			//log.Printf("outShape=%v inOff=%d stride=%v i=%d", outShape, inOff, stride, i)
+			//Log.Printf("outShape=%v inOff=%d stride=%v i=%d", outShape, inOff, stride, i)
 			recurse(outShape[1:], inOff+i*stride[0], stride[1:])
 		}
 	}
@@ -905,12 +904,12 @@ func (p ValSlice) Len() int {
 func (p ValSlice) Less(i, j int) bool {
 	na, ok := a.(*Num)
 	if !ok {
-		log.Panicf("Expected a number, but got %#v", a)
+		Log.Panicf("Expected a number, but got %#v", a)
 	}
 
 	nb, ok := b.(*Num)
 	if !ok {
-		log.Panicf("Expected a number, but got %#v", b)
+		Log.Panicf("Expected a number, but got %#v", b)
 	}
 
 	return na.F < nb.F
@@ -926,12 +925,12 @@ func dyadicMember(c *Context, a Val, b Val, axis int) Val {
 	// TODO: value.go should compare any Val, not just *Num.
 	mata, ok := a.(*Mat)
 	if !ok {
-		log.Panicf("Dyadic `member` wants matrix on left, but got %#v", a)
+		Log.Panicf("Dyadic `member` wants matrix on left, but got %#v", a)
 	}
 
 	matb, ok := b.(*Mat)
 	if !ok {
-		log.Panicf("Dyadic `member` wants matrix on right, but got %#v", b)
+		Log.Panicf("Dyadic `member` wants matrix on right, but got %#v", b)
 	}
 
 	aVec := mata.M
@@ -944,7 +943,7 @@ func dyadicMember(c *Context, a Val, b Val, axis int) Val {
 	for i, e := range bVec {
 		num, ok := e.(*Num)
 		if !ok {
-			log.Panicf("Dyadic `member` RHS element @%d not a number: %v", i, e)
+			Log.Panicf("Dyadic `member` RHS element @%d not a number: %v", i, e)
 		}
 		floats[i] = num.F
 	}
@@ -953,7 +952,7 @@ func dyadicMember(c *Context, a Val, b Val, axis int) Val {
 	for i, e := range aVec {
 		num, ok := e.(*Num)
 		if !ok {
-			log.Panicf("Dyadic `member` RHS element @%d not a number: %v", i, e)
+			Log.Panicf("Dyadic `member` RHS element @%d not a number: %v", i, e)
 		}
 		j := sort.SearchFloat64s(floats, num.F)
 

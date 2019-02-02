@@ -1,7 +1,6 @@
 package livy
 
 import (
-	"log"
 	"math"
 	"sort"
 )
@@ -73,7 +72,7 @@ var StandardMonadics = map[string]MonadicFunc{
 	"expm1": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Expm1(b)
 	})),
-	"log": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+	"Log": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Log(b)
 	})),
 	"log10": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
@@ -171,7 +170,7 @@ func MkEachOp(name string, fn MonadicFunc) MonadicFunc {
 	return func(c *Context, b Val, axis int) Val {
 		mat, ok := b.(*Mat)
 		if !ok {
-			log.Panicf("Each operator %s~ expects matrix argument, got %s", name, b)
+			Log.Panicf("Each operator %s~ expects matrix argument, got %s", name, b)
 		}
 		vec := make([]Val, len(mat.M))
 		for i, x := range mat.M {
@@ -195,7 +194,7 @@ func doubleMonadic(c *Context, b Val) Val {
 	case *Num:
 		return &Num{2 * y.F}
 	}
-	log.Panicf("Wrong type for monadic `double`: %T %q", b, b)
+	Log.Panicf("Wrong type for monadic `double`: %T %q", b, b)
 	return nil
 }
 
@@ -256,7 +255,7 @@ func WrapMatMonadic(fn MonadicFunc) MonadicFunc {
 			for i := 0; i < n; i++ {
 				y1 := y.M[i].GetScalarOrNil()
 				if y1 == nil {
-					log.Panicf("arg not a scalar at matrix offset %d: %s", i, y1)
+					Log.Panicf("arg not a scalar at matrix offset %d: %s", i, y1)
 				}
 				vec[i] = fn(c, y1, axis)
 			}
@@ -267,7 +266,7 @@ func WrapMatMonadic(fn MonadicFunc) MonadicFunc {
 
 		ys := b.GetScalarOrNil()
 		if ys == nil {
-			log.Panicf("arg not scalar or matrix")
+			Log.Panicf("arg not scalar or matrix")
 		}
 		return fn(c, ys, axis)
 	}
@@ -299,13 +298,13 @@ func rotMonadic(c *Context, b Val, axis int) Val {
 func transposeMonadic(c *Context, b Val, axis int) Val {
 	mat, ok := b.(*Mat)
 	if !ok {
-		log.Panicf("Monadic `transpose` needs matrix on right, but got %v", b)
+		Log.Panicf("Monadic `transpose` needs matrix on right, but got %v", b)
 	}
 
 	shape := mat.S
 	rank := len(shape)
 	if rank < 2 {
-		log.Panicf("Monadic `transpose` needs matrix with rank >= 2, but got shape %v", shape)
+		Log.Panicf("Monadic `transpose` needs matrix with rank >= 2, but got shape %v", shape)
 	}
 
 	var spec []Val
@@ -350,10 +349,10 @@ func monadicDown(c *Context, b Val, axis int) Val {
 func monadicUpDown(c *Context, b Val, reverse bool, name string) Val {
 	mat, ok := b.(*Mat)
 	if !ok {
-		log.Panicf("monadic `%s` wants matrix, got %v", name, b)
+		Log.Panicf("monadic `%s` wants matrix, got %v", name, b)
 	}
 	if len(mat.S) != 1 {
-		log.Panicf("monadic `%s` wants matrix of rank 1, got %v", name, b)
+		Log.Panicf("monadic `%s` wants matrix of rank 1, got %v", name, b)
 	}
 
 	n := mat.S[0]
@@ -382,11 +381,11 @@ func monadicBox(c *Context, b Val, axis int) Val {
 func monadicUnbox(c *Context, b Val, axis int) Val {
 	box, ok := b.(*Box)
 	if !ok {
-		log.Panicf("In unbox, not a box: %T: %v", b, b)
+		Log.Panicf("In unbox, not a box: %T: %v", b, b)
 	}
 	val, ok := box.X.(Val)
 	if !ok {
-		log.Panicf("In unbox, not an apl value in the box: %T: %v", box.X, box.X)
+		Log.Panicf("In unbox, not an apl value in the box: %T: %v", box.X, box.X)
 	}
 	return val
 }
