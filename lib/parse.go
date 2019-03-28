@@ -283,6 +283,31 @@ LOOP:
 			default:
 				return &Dyad{t, &List{vec}, t.Str, b, axis}, j
 			}
+		case ComplexToken:
+			{
+				_m := MatchComplexSplit(t.Str)
+				if _m == nil {
+					Log.Panicf("Error parsing ComplexToken %q at position %d: %s", t.Str, t.Pos, lex.Source)
+				}
+				_r, _j, _i := _m[1], _m[2], _m[3]
+				var rl float64
+				if _r != "" {
+					_rl, err := strconv.ParseFloat(_r, 64)
+					if err != nil {
+						Log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
+					}
+					rl = _rl
+				}
+				cx, err := strconv.ParseFloat(_i, 64)
+				if err != nil {
+					Log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
+				}
+				if _j[0] == '-' {
+					cx = -cx
+				}
+				vec = append(vec, &Number{complex(rl, cx)})
+				i++
+			}
 		case NumberToken:
 			num, err := strconv.ParseFloat(t.Str, 64)
 			if err != nil {

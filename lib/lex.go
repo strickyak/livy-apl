@@ -9,6 +9,7 @@ type TokenType int
 
 const (
 	EndToken TokenType = iota
+	ComplexToken
 	NumberToken
 	VariableToken
 	OperatorToken
@@ -28,14 +29,19 @@ const (
 	StringToken
 )
 
-const JUST_OPERATOR = `([-+*/\\,&|!=<>]+|[a-z][A-Za-z0-9_]*)`
-const OPERATOR = `([-+*/\\,&|!=<>]+|[a-z][A-Za-z0-9_]*[/\\]?)`
-const KEYWORD = `(def|if|then|elif|else|fi|while|do|done|break|continue)\b`
+const RE_JUST_OPERATOR = `([-+*/\\,&|!=<>]+|[a-z][A-Za-z0-9_]*)`
+const RE_OPERATOR = `([-+*/\\,&|!=<>]+|[a-z][A-Za-z0-9_]*[/\\]?)`
+const RE_KEYWORD = `(def|if|then|elif|else|fi|while|do|done|break|continue)\b`
+const RE_REAL = `([-+]?[0-9]+([.][0-9]+)?([eE][-+]?[0-9]+)?)`
+const RE_COMPLEX = RE_REAL + `?([+-][jJ])` + RE_REAL
+const RE_COMPLEX_SPLIT = `(.*)([+-][jJ])(.*)`
 
 var MatchWhite = regexp.MustCompile(`^(\s*)`).FindStringSubmatch
-var MatchNumber = regexp.MustCompile(`^([-+]?[0-9]+([.][0-9]+)?([eE][-+]?[0-9]+)?)`).FindStringSubmatch
+var MatchNumber = regexp.MustCompile(`^` + RE_REAL).FindStringSubmatch
+var MatchComplex = regexp.MustCompile(`^` + RE_COMPLEX).FindStringSubmatch
+var MatchComplexSplit = regexp.MustCompile(RE_COMPLEX_SPLIT).FindStringSubmatch
 var MatchVariable = regexp.MustCompile(`^([A-Z_][A-Za-z0-9_]*)`).FindStringSubmatch
-var MatchOperator = regexp.MustCompile("^" + OPERATOR).FindStringSubmatch
+var MatchOperator = regexp.MustCompile("^" + RE_OPERATOR).FindStringSubmatch
 var MatchOpen = regexp.MustCompile(`^[(]`).FindStringSubmatch
 var MatchClose = regexp.MustCompile(`^[)]`).FindStringSubmatch
 var MatchOpenCurly = regexp.MustCompile(`^[{]`).FindStringSubmatch
@@ -45,13 +51,13 @@ var MatchKet = regexp.MustCompile(`^[]]`).FindStringSubmatch
 var MatchSemi = regexp.MustCompile(`^[;]`).FindStringSubmatch
 var MatchString = regexp.MustCompile(`^(["]([^"\\]|[\\].)*["])`).FindStringSubmatch
 
-var MatchReduce = regexp.MustCompile("^" + JUST_OPERATOR + `[/]`).FindStringSubmatch
-var MatchScan = regexp.MustCompile("^" + JUST_OPERATOR + `[\\]`).FindStringSubmatch
-var MatchEach = regexp.MustCompile("^" + JUST_OPERATOR + `[~]`).FindStringSubmatch
+var MatchReduce = regexp.MustCompile("^" + RE_JUST_OPERATOR + `[/]`).FindStringSubmatch
+var MatchScan = regexp.MustCompile("^" + RE_JUST_OPERATOR + `[\\]`).FindStringSubmatch
+var MatchEach = regexp.MustCompile("^" + RE_JUST_OPERATOR + `[~]`).FindStringSubmatch
 
-var MatchInnerProduct = regexp.MustCompile("^" + JUST_OPERATOR + "[.]" + JUST_OPERATOR).FindStringSubmatch
-var MatchOuterProduct = regexp.MustCompile("^[.][.]" + JUST_OPERATOR).FindStringSubmatch
-var MatchKeyword = regexp.MustCompile("^" + KEYWORD).FindStringSubmatch
+var MatchInnerProduct = regexp.MustCompile("^" + RE_JUST_OPERATOR + "[.]" + RE_JUST_OPERATOR).FindStringSubmatch
+var MatchOuterProduct = regexp.MustCompile("^[.][.]" + RE_JUST_OPERATOR).FindStringSubmatch
+var MatchKeyword = regexp.MustCompile("^" + RE_KEYWORD).FindStringSubmatch
 
 type Matcher struct {
 	Type    TokenType
@@ -60,6 +66,7 @@ type Matcher struct {
 
 var matchers = []Matcher{
 	{KeywordToken, MatchKeyword},
+	{ComplexToken, MatchComplex},
 	{NumberToken, MatchNumber},
 	{VariableToken, MatchVariable},
 	{ReduceToken, MatchReduce},
