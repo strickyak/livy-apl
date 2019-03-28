@@ -10,7 +10,7 @@ type DyadicFunc func(c *Context, a Val, b Val, axis int) Val
 var StandardDyadics = map[string]DyadicFunc{
 	"member": dyadicMember,
 	"e":      dyadicMember,
-	"j":      dyadicJ,
+	"j":      WrapMatMatDyadic(WrapCxDyadic(cxcxJ)),
 
 	"rho": dyadicRho,
 	"p":   dyadicRho,
@@ -39,14 +39,14 @@ var StandardDyadics = map[string]DyadicFunc{
 	"or":  WrapMatMatDyadic(WrapFloatBoolDyadic(ffor)),
 	"xor": WrapMatMatDyadic(WrapFloatBoolDyadic(ffxor)),
 
-	"+": WrapMatMatDyadic(WrapFloatDyadic(
-		func(a, b float64) float64 { return a + b })),
-	"-": WrapMatMatDyadic(WrapFloatDyadic(
-		func(a, b float64) float64 { return a - b })),
-	"*": WrapMatMatDyadic(WrapFloatDyadic(
-		func(a, b float64) float64 { return a * b })),
-	"div": WrapMatMatDyadic(WrapFloatDyadic(
-		func(a, b float64) float64 { return a / b })),
+	"+": WrapMatMatDyadic(WrapCxDyadic(
+		func(a, b complex128) complex128 { return a + b })),
+	"-": WrapMatMatDyadic(WrapCxDyadic(
+		func(a, b complex128) complex128 { return a - b })),
+	"*": WrapMatMatDyadic(WrapCxDyadic(
+		func(a, b complex128) complex128 { return a * b })),
+	"div": WrapMatMatDyadic(WrapCxDyadic(
+		func(a, b complex128) complex128 { return a / b })),
 	"**": WrapMatMatDyadic(WrapFloatDyadic(
 		func(a, b float64) float64 { return math.Pow(a, b) })),
 	"remainder": WrapMatMatDyadic(WrapFloatDyadic(
@@ -322,10 +322,8 @@ func asMat(a Val) *Mat {
 	return mat
 }
 
-func dyadicJ(c *Context, a Val, b Val, axis int) Val {
-	// TODO matrices
-	ca, cb := a.GetScalarCx(), b.GetScalarCx()
-	return &Num{ca + complex(0.0, 1.0)*cb}
+func cxcxJ(ca, cb complex128) complex128 {
+	return ca + complex(0.0, 1.0)*cb
 }
 
 func dyadicRho(c *Context, a Val, b Val, axis int) Val {
@@ -365,12 +363,21 @@ func recursiveFill(shape []int, source []Val, vec []Val, i int) ([]Val, int) {
 
 type FuncFloatFloatBool func(float64, float64) bool
 type FuncFloatFloatFloat func(float64, float64) float64
+type FuncCxCxCx func(complex128, complex128) complex128
 
 func WrapFloatDyadic(fn FuncFloatFloatFloat) DyadicFunc {
 	return func(c *Context, a, b Val, axis int) Val {
 		x := a.GetScalarFloat()
 		y := b.GetScalarFloat()
 		return &Num{complex(fn(x, y), 0)}
+	}
+}
+
+func WrapCxDyadic(fn FuncCxCxCx) DyadicFunc {
+	return func(c *Context, a, b Val, axis int) Val {
+		x := a.GetScalarCx()
+		y := b.GetScalarCx()
+		return &Num{fn(x, y)}
 	}
 }
 

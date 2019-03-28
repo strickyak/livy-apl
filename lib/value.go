@@ -411,3 +411,23 @@ func Compare(a, b Val) int {
 	}
 	return a.Compare(b)
 }
+
+func CxNum(f complex128) *Num {
+	return &Num{f}
+}
+
+func FloatNum(f float64) *Num {
+	return &Num{complex(f, 0.0)}
+}
+
+func Must(predicate bool) {
+	if !predicate {
+		panic("FAILED: Must()")
+	}
+}
+
+func Check(err error) {
+	if err != nil {
+		panic(err)
+	}
+}

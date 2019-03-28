@@ -26,7 +26,9 @@ var StandardMonadics = map[string]MonadicFunc{
 	"i":  iotaMonadic,
 	"i1": iota1Monadic,
 	"p":  rhoMonadic,
-	"j":  monadicJ,
+	"j": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(0.0, 1.0) * b
+	})),
 
 	"asin": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Asin(b)
@@ -182,7 +184,7 @@ func MkEachOp(name string, fn MonadicFunc) MonadicFunc {
 }
 
 type funcFloatFloat func(b float64) float64
-type funcComplexComplex func(b complex128) complex128
+type funcCxCx func(b complex128) complex128
 
 func WrapFloatMonadic(fn funcFloatFloat) MonadicFunc {
 	return func(c *Context, b Val, axis int) Val {
@@ -191,7 +193,7 @@ func WrapFloatMonadic(fn funcFloatFloat) MonadicFunc {
 	}
 }
 
-func WrapComplexMonadic(fn funcComplexComplex) MonadicFunc {
+func WrapCxMonadic(fn funcCxCx) MonadicFunc {
 	return func(c *Context, b Val, axis int) Val {
 		y := b.GetScalarCx()
 		return &Num{fn(y)}
@@ -234,9 +236,7 @@ func iotaK(c *Context, b Val, k int) Val {
 		S: []int{n},
 	}
 }
-func monadicJ(c *Context, b Val, axis int) Val {
-	return &Num{complex(0.0, 1.0) * b.GetScalarCx()}
-}
+
 func rhoMonadic(c *Context, b Val, axis int) Val {
 	switch y := b.(type) {
 	case *Mat:
