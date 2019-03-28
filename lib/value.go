@@ -79,18 +79,7 @@ func ParseCx(s string) complex128 {
 }
 
 func Cx2Str(c complex128) string {
-	rl, im := real(c), imag(c)
-	if im == 0 {
-		return fmt.Sprintf("%.18g", rl)
-	} else if rl == 0 && im > 0 {
-		return fmt.Sprintf("+j%.18g", im)
-	} else if rl == 0 && im < 0 {
-		return fmt.Sprintf("-j%.18g", -im)
-	} else if im < 0 {
-		return fmt.Sprintf("%.18g-j%.18g", rl, -im)
-	} else {
-		return fmt.Sprintf("%.18g+j%.18g", rl, +im)
-	}
+	return Num{c}.String()
 }
 
 func (o Char) String() string {
@@ -101,9 +90,9 @@ func (o Num) String() string {
 	if im == 0 {
 		return fmt.Sprintf("%g ", rl)
 	} else if rl == 0 && im > 0 {
-		return fmt.Sprintf("+j%g", im)
+		return fmt.Sprintf("+j%g ", im)
 	} else if rl == 0 && im < 0 {
-		return fmt.Sprintf("-j%g", -im)
+		return fmt.Sprintf("-j%g ", -im)
 	} else if im < 0 {
 		return fmt.Sprintf("%g-j%g ", rl, -im)
 	} else {
