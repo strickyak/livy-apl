@@ -2,6 +2,7 @@ package livy
 
 import (
 	"math"
+	"math/cmplx"
 	"sort"
 )
 
@@ -29,45 +30,54 @@ var StandardMonadics = map[string]MonadicFunc{
 	"j": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
 		return complex(0.0, 1.0) * b
 	})),
-
-	"asin": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Asin(b)
+	"rect": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		Must(imag(b) == 0)
+		return cmplx.Rect(1.0, real(b))
 	})),
-	"acos": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Acos(b)
+	"isInf": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return Bool2Cx(cmplx.IsInf(b))
 	})),
-	"atan": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Atan(b)
+	"isNaN": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return Bool2Cx(cmplx.IsNaN(b))
 	})),
-	"sin": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Sin(b)
+	"asin": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Asin(b)
 	})),
-	"cos": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Cos(b)
+	"acos": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Acos(b)
 	})),
-	"tan": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Tan(b)
+	"atan": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Atan(b)
 	})),
-	"asinh": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Asinh(b)
+	"sin": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Sin(b)
 	})),
-	"acosh": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Acosh(b)
+	"cos": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Cos(b)
 	})),
-	"atanh": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Atanh(b)
+	"tan": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Tan(b)
 	})),
-	"sinh": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Sinh(b)
+	"asinh": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Asinh(b)
 	})),
-	"cosh": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Cosh(b)
+	"acosh": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Acosh(b)
 	})),
-	"tanh": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Tanh(b)
+	"atanh": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Atanh(b)
 	})),
-	"exp": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Exp(b)
+	"sinh": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Sinh(b)
+	})),
+	"cosh": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Cosh(b)
+	})),
+	"tanh": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Tanh(b)
+	})),
+	"exp": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Exp(b)
 	})),
 	"exp2": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Exp2(b)
@@ -75,11 +85,11 @@ var StandardMonadics = map[string]MonadicFunc{
 	"expm1": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Expm1(b)
 	})),
-	"Log": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Log(b)
+	"Log": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Log(b)
 	})),
-	"log10": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Log10(b)
+	"log10": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Log10(b)
 	})),
 	"log2": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Log2(b)
@@ -102,13 +112,13 @@ var StandardMonadics = map[string]MonadicFunc{
 	"cbrt": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Cbrt(b)
 	})),
-	"sqrt": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Sqrt(b)
+	"sqrt": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return cmplx.Sqrt(b)
 	})),
-	"double": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+	"double": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
 		return b + b
 	})),
-	"square": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+	"square": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
 		return b * b
 	})),
 	"sgn": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
@@ -122,8 +132,11 @@ var StandardMonadics = map[string]MonadicFunc{
 			panic("cannot sgn")
 		}
 	})),
-	"abs": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Abs(b)
+	"abs": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(cmplx.Abs(b), 0)
+	})),
+	"phase": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(cmplx.Phase(b), 0.0)
 	})),
 	"erf": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Erf(b)
@@ -142,9 +155,6 @@ var StandardMonadics = map[string]MonadicFunc{
 	})),
 	"inf": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Inf(int(b))
-	})),
-	"isNaN": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return boolf(math.IsNaN(b))
 	})),
 	"y0": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Y0(b)

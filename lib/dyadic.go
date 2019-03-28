@@ -2,6 +2,7 @@ package livy
 
 import (
 	"math"
+	"math/cmplx"
 	"sort"
 )
 
@@ -11,6 +12,7 @@ var StandardDyadics = map[string]DyadicFunc{
 	"member": dyadicMember,
 	"e":      dyadicMember,
 	"j":      WrapMatMatDyadic(WrapCxDyadic(cxcxJ)),
+	"rect":   WrapMatMatDyadic(WrapCxDyadic(cxcxRect)),
 
 	"rho": dyadicRho,
 	"p":   dyadicRho,
@@ -23,10 +25,10 @@ var StandardDyadics = map[string]DyadicFunc{
 	`/`:         dyadicCompress,
 	`\`:         dyadicExpand,
 
-	"==": WrapMatMatDyadic(WrapFloatBoolDyadic(
-		func(a, b float64) bool { return a == b })),
-	"!=": WrapMatMatDyadic(WrapFloatBoolDyadic(
-		func(a, b float64) bool { return a != b })),
+	"==": WrapMatMatDyadic(WrapCxBoolDyadic(
+		func(a, b complex128) bool { return a == b })),
+	"!=": WrapMatMatDyadic(WrapCxBoolDyadic(
+		func(a, b complex128) bool { return a != b })),
 	"<": WrapMatMatDyadic(WrapFloatBoolDyadic(
 		func(a, b float64) bool { return a < b })),
 	">": WrapMatMatDyadic(WrapFloatBoolDyadic(
@@ -47,8 +49,8 @@ var StandardDyadics = map[string]DyadicFunc{
 		func(a, b complex128) complex128 { return a * b })),
 	"div": WrapMatMatDyadic(WrapCxDyadic(
 		func(a, b complex128) complex128 { return a / b })),
-	"**": WrapMatMatDyadic(WrapFloatDyadic(
-		func(a, b float64) float64 { return math.Pow(a, b) })),
+	"**": WrapMatMatDyadic(WrapCxDyadic(
+		func(a, b complex128) complex128 { return cmplx.Pow(a, b) })),
 	"remainder": WrapMatMatDyadic(WrapFloatDyadic(
 		func(a, b float64) float64 { return math.Remainder(a, b) })),
 	"mod": WrapMatMatDyadic(WrapFloatDyadic(
@@ -325,6 +327,11 @@ func asMat(a Val) *Mat {
 func cxcxJ(ca, cb complex128) complex128 {
 	return ca + complex(0.0, 1.0)*cb
 }
+func cxcxRect(ca, cb complex128) complex128 {
+	Must(imag(ca) == 0)
+	Must(imag(cb) == 0)
+	return cmplx.Rect(real(ca), real(cb))
+}
 
 func dyadicRho(c *Context, a Val, b Val, axis int) Val {
 	spec := GetVectorOfScalarInts(a)
@@ -362,6 +369,7 @@ func recursiveFill(shape []int, source []Val, vec []Val, i int) ([]Val, int) {
 }
 
 type FuncFloatFloatBool func(float64, float64) bool
+type FuncCxCxBool func(complex128, complex128) bool
 type FuncFloatFloatFloat func(float64, float64) float64
 type FuncCxCxCx func(complex128, complex128) complex128
 
@@ -385,6 +393,17 @@ func WrapFloatBoolDyadic(fn FuncFloatFloatBool) DyadicFunc {
 	return func(c *Context, a, b Val, axis int) Val {
 		x := a.GetScalarFloat()
 		y := b.GetScalarFloat()
+		if fn(x, y) {
+			return &Num{complex(1.0, 0)}
+		} else {
+			return &Num{complex(0.0, 0)}
+		}
+	}
+}
+func WrapCxBoolDyadic(fn FuncCxCxBool) DyadicFunc {
+	return func(c *Context, a, b Val, axis int) Val {
+		x := a.GetScalarCx()
+		y := b.GetScalarCx()
 		if fn(x, y) {
 			return &Num{complex(1.0, 0)}
 		} else {

@@ -80,7 +80,9 @@ func ParseCx(s string) complex128 {
 
 func Cx2Str(c complex128) string {
 	r, i := real(c), imag(c)
-	if i < 0 {
+	if i == 0 {
+		return fmt.Sprintf("%.18g", r)
+	} else if i < 0 {
 		return fmt.Sprintf("%.18g-j%.18g", r, -i)
 	} else {
 		return fmt.Sprintf("%.18g+j%.18g", r, +i)
@@ -114,14 +116,14 @@ func (o Mat) String() string {
 	return bb.String()
 }
 func (o Box) String() string {
-	return fmt.Sprintf("(%v)", o.X)
+	return fmt.Sprintf("Box(%v) ", o.X)
 }
 
 func (o Char) Pretty() string {
 	return fmt.Sprintf("'%c' ", o.R)
 }
 func (o Num) Pretty() string {
-	return fmt.Sprintf("%.15g ", o.F)
+	return fmt.Sprintf("%s ", o)
 }
 func (o Mat) PrettyMatrix(vec []string) string {
 	var bb bytes.Buffer
@@ -412,6 +414,20 @@ func Compare(a, b Val) int {
 	return a.Compare(b)
 }
 
+func Bool2Cx(b bool) complex128 {
+	if b {
+		return 1
+	} else {
+		return 0
+	}
+}
+func BoolNum(b bool) *Num {
+	if b {
+		return One
+	} else {
+		return Zero
+	}
+}
 func CxNum(f complex128) *Num {
 	return &Num{f}
 }
