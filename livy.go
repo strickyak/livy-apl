@@ -1,7 +1,7 @@
 package main
 
 import (
-	. "github.com/strickyak/livy-apl/livy"
+	. "github.com/strickyak/livy-apl/lib"
 
 	"bytes"
 	"errors"

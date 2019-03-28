@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	. "github.com/strickyak/livy-apl/livy"
+	. "github.com/strickyak/livy-apl/lib"
 	chirp "github.com/yak-labs/chirp-lang"
 )
 
