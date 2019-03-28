@@ -79,13 +79,17 @@ func ParseCx(s string) complex128 {
 }
 
 func Cx2Str(c complex128) string {
-	r, i := real(c), imag(c)
-	if i == 0 {
-		return fmt.Sprintf("%.18g", r)
-	} else if i < 0 {
-		return fmt.Sprintf("%.18g-j%.18g", r, -i)
+	rl, im := real(c), imag(c)
+	if im == 0 {
+		return fmt.Sprintf("%.18g", rl)
+	} else if rl == 0 && im > 0 {
+		return fmt.Sprintf("+j%.18g", im)
+	} else if rl == 0 && im < 0 {
+		return fmt.Sprintf("-j%.18g", -im)
+	} else if im < 0 {
+		return fmt.Sprintf("%.18g-j%.18g", rl, -im)
 	} else {
-		return fmt.Sprintf("%.18g+j%.18g", r, +i)
+		return fmt.Sprintf("%.18g+j%.18g", rl, +im)
 	}
 }
 
@@ -93,13 +97,17 @@ func (o Char) String() string {
 	return fmt.Sprintf("'%c' ", o.R)
 }
 func (o Num) String() string {
-	re, im := real(o.F), imag(o.F)
+	rl, im := real(o.F), imag(o.F)
 	if im == 0 {
-		return fmt.Sprintf("%g ", re)
+		return fmt.Sprintf("%g ", rl)
+	} else if rl == 0 && im > 0 {
+		return fmt.Sprintf("+j%g", im)
+	} else if rl == 0 && im < 0 {
+		return fmt.Sprintf("-j%g", -im)
 	} else if im < 0 {
-		return fmt.Sprintf("%g-j%g ", re, -im)
+		return fmt.Sprintf("%g-j%g ", rl, -im)
 	} else {
-		return fmt.Sprintf("%g+j%g ", re, +im)
+		return fmt.Sprintf("%g+j%g ", rl, +im)
 	}
 }
 func (o Mat) String() string {

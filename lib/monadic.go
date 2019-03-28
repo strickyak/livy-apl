@@ -30,6 +30,12 @@ var StandardMonadics = map[string]MonadicFunc{
 	"j": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
 		return complex(0.0, 1.0) * b
 	})),
+	"real": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(real(b), 0.0)
+	})),
+	"imag": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(imag(b), 0.0)
+	})),
 	"rect": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
 		Must(imag(b) == 0)
 		return cmplx.Rect(1.0, real(b))
