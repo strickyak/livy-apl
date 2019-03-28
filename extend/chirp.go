@@ -22,7 +22,7 @@ func MatToTcl(mat *Mat) chirp.T {
 		stride := MulReduce(mat.S[1:])
 		var vec []chirp.T
 		for i := 0; i < mat.S[0]; i++ {
-			vec = append(vec, MatToTcl(&Mat{M:mat.M[i*stride:(i+1)*stride], S:mat.S[1:]}))
+			vec = append(vec, MatToTcl(&Mat{M: mat.M[i*stride : (i+1)*stride], S: mat.S[1:]}))
 		}
 		return chirp.MkList(vec)
 	}

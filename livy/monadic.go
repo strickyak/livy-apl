@@ -26,6 +26,7 @@ var StandardMonadics = map[string]MonadicFunc{
 	"i":  iotaMonadic,
 	"i1": iota1Monadic,
 	"p":  rhoMonadic,
+	"j":  monadicJ,
 
 	"asin": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Asin(b)
@@ -181,10 +182,18 @@ func MkEachOp(name string, fn MonadicFunc) MonadicFunc {
 }
 
 type funcFloatFloat func(b float64) float64
+type funcComplexComplex func(b complex128) complex128
 
 func WrapFloatMonadic(fn funcFloatFloat) MonadicFunc {
 	return func(c *Context, b Val, axis int) Val {
 		y := b.GetScalarFloat()
+		return &Num{complex(fn(y), 0)}
+	}
+}
+
+func WrapComplexMonadic(fn funcComplexComplex) MonadicFunc {
+	return func(c *Context, b Val, axis int) Val {
+		y := b.GetScalarCx()
 		return &Num{fn(y)}
 	}
 }
@@ -218,12 +227,15 @@ func iotaK(c *Context, b Val, k int) Val {
 	n := b.GetScalarInt()
 	vec := make([]Val, n)
 	for i := 0; i < n; i++ {
-		vec[i] = &Num{float64(i + k)}
+		vec[i] = &Num{complex(float64(i+k), 0)}
 	}
 	return &Mat{
 		M: vec,
 		S: []int{n},
 	}
+}
+func monadicJ(c *Context, b Val, axis int) Val {
+	return &Num{complex(0.0, 1.0) * b.GetScalarCx()}
 }
 func rhoMonadic(c *Context, b Val, axis int) Val {
 	switch y := b.(type) {
@@ -231,7 +243,7 @@ func rhoMonadic(c *Context, b Val, axis int) Val {
 		n := len(y.S)
 		vec := make([]Val, n)
 		for i := 0; i < n; i++ {
-			vec[i] = &Num{float64(y.S[i])}
+			vec[i] = &Num{complex(float64(y.S[i]), 0)}
 		}
 		return &Mat{
 			M: vec,
@@ -290,7 +302,7 @@ func rotMonadic(c *Context, b Val, axis int) Val {
 	axisLen := shape[axis]
 	var reversed []Val
 	for i := axisLen - 1; i >= 0; i-- {
-		reversed = append(reversed, &Num{float64(i)})
+		reversed = append(reversed, &Num{complex(float64(i), 0)})
 	}
 	return dyadicRot(c, &Mat{reversed, []int{axisLen}}, b, axis)
 }
@@ -311,11 +323,11 @@ func transposeMonadic(c *Context, b Val, axis int) Val {
 	for i := 0; i < rank; i++ {
 		switch mod(i, rank) {
 		case mod(rank+axis, rank):
-			spec = append(spec, &Num{float64(mod(i-1, rank))})
+			spec = append(spec, &Num{complex(float64(mod(i-1, rank)), 0)})
 		case mod(rank+axis-1, rank):
-			spec = append(spec, &Num{float64(mod(i+1, rank))})
+			spec = append(spec, &Num{complex(float64(mod(i+1, rank)), 0)})
 		default:
-			spec = append(spec, &Num{float64(mod(i, rank))})
+			spec = append(spec, &Num{complex(float64(mod(i, rank)), 0)})
 		}
 	}
 	lhs := &Mat{spec, []int{len(spec)}}
@@ -370,7 +382,7 @@ func monadicUpDown(c *Context, b Val, reverse bool, name string) Val {
 		if reverse {
 			j = n - 1 - i
 		}
-		outVec = append(outVec, &Num{float64(ints[j])})
+		outVec = append(outVec, &Num{complex(float64(ints[j]), 0)})
 	}
 
 	return &Mat{outVec, []int{n}}

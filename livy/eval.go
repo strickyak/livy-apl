@@ -19,7 +19,7 @@ type Variable struct {
 }
 
 type Number struct {
-	F float64
+	F complex128
 }
 
 type Literal struct {
@@ -297,7 +297,7 @@ func (o Def) Eval(c *Context) Val {
 			c.Globals[o.Lhs] = a
 		}
 		if o.Axis != "" {
-			c.Globals[o.Axis] = &Num{float64(axis)}
+			c.Globals[o.Axis] = &Num{complex(float64(axis), 0)}
 		}
 		c.Globals[o.Rhs] = b
 		return o.Seq.Eval(c)
@@ -530,5 +530,20 @@ func float2bool(f float64) bool {
 		return false
 	}
 	Log.Panicf("Cannot use %.18g as a bool", f)
+	panic(0)
+}
+
+func cx2bool(c complex128) bool {
+	re, im := real(c), imag(c)
+	if im != 0 {
+		Log.Panicf("Cannot use %s as a bool", Cx2Str(c))
+	}
+	if re == 1.0 {
+		return true
+	}
+	if re == 0.0 {
+		return false
+	}
+	Log.Panicf("Cannot use %s as a bool", Cx2Str(c))
 	panic(0)
 }

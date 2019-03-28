@@ -288,7 +288,7 @@ LOOP:
 			if err != nil {
 				Log.Panicf("Error parsing number %q at position %d: %s", t.Str, t.Pos, lex.Source)
 			}
-			vec = append(vec, &Number{num})
+			vec = append(vec, &Number{complex(num, 0)})
 			i++
 		case StringToken:
 			s, err := strconv.Unquote(t.Str)

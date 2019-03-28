@@ -3,7 +3,10 @@ package livy
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"reflect"
+	"regexp"
+	"strconv"
 )
 
 type ValEnum int
@@ -26,6 +29,7 @@ type Val interface {
 	Ravel() []Val
 	GetScalarInt() int
 	GetScalarFloat() float64
+	GetScalarCx() complex128
 	GetScalarOrNil() Val
 }
 
@@ -34,7 +38,7 @@ type Char struct {
 }
 
 type Num struct {
-	F float64
+	F complex128
 }
 
 type Mat struct {
@@ -46,11 +50,55 @@ type Box struct {
 	X interface{}
 }
 
+var CX_REGEXP = `([-+0-9.eE]+)(([-+])j([-+0-9.eE]+))?`
+var MatchCx = regexp.MustCompile(CX_REGEXP)
+
+func ParseCx(s string) complex128 {
+	m := MatchCx.FindStringSubmatch(s)
+	if m == nil {
+		log.Panicf("cannot parse complex number: %q", s)
+	}
+	_re, _sign, _im := m[1], m[3], m[4]
+	re, err := strconv.ParseFloat(_re, 64)
+	if err != nil {
+		log.Panicf("cannot parse complex number: %q", s)
+	}
+	if len(_sign) == 1 {
+		im, err := strconv.ParseFloat(_im, 64)
+		if err != nil {
+			log.Panicf("cannot parse complex number: %q", s)
+		}
+		if _sign == "-" {
+			return complex(re, -im)
+		} else {
+			return complex(re, +im)
+		}
+	} else {
+		return complex(re, 0)
+	}
+}
+
+func Cx2Str(c complex128) string {
+	r, i := real(c), imag(c)
+	if i < 0 {
+		return fmt.Sprintf("%.18g-j%.18g", r, -i)
+	} else {
+		return fmt.Sprintf("%.18g+j%.18g", r, +i)
+	}
+}
+
 func (o Char) String() string {
 	return fmt.Sprintf("'%c' ", o.R)
 }
 func (o Num) String() string {
-	return fmt.Sprintf("%g ", o.F)
+	re, im := real(o.F), imag(o.F)
+	if im == 0 {
+		return fmt.Sprintf("%g ", re)
+	} else if im < 0 {
+		return fmt.Sprintf("%g-j%g ", re, -im)
+	} else {
+		return fmt.Sprintf("%g+j%g ", re, +im)
+	}
 }
 func (o Mat) String() string {
 	var bb bytes.Buffer
@@ -103,7 +151,7 @@ func (o Mat) Pretty() string {
 		return "(* TODO: Mat rank 0 *) " /* + o.M[0].Pretty() */
 	case 1:
 		if len(o.M) != o.S[0] {
-			Log.Panicf("matrix shape %v but contains %d elements: %#v", o.S, len(o.M), o)
+			log.Panicf("matrix shape %v but contains %d elements: %#v", o.S, len(o.M), o)
 		}
 		for _, v := range o.M {
 			bb.WriteString(v.String())
@@ -146,9 +194,13 @@ func (o Char) GetScalarInt() int {
 	panic(0)
 }
 func (o Num) GetScalarInt() int {
-	a := int(o.F)
-	if float64(a) != o.F {
-		Log.Panicf("Not an integer: %g", o.F)
+	re, im := real(o.F), imag(o.F)
+	if im != 0 {
+		log.Panicf("Number has imag part, cannot be used as integer: %s", Cx2Str(o.F))
+	}
+	a := int(re)
+	if float64(a) != re {
+		Log.Panicf("Not an integer: %s", Cx2Str(o.F))
 	}
 	return a
 }
@@ -164,12 +216,29 @@ func (o Box) GetScalarInt() int {
 	panic(0)
 }
 
+func (o Char) GetScalarCx() complex128 {
+	Log.Panicf("Char cannot be a Scalar Complex: '%c'", o.R)
+	panic(0)
+}
 func (o Char) GetScalarFloat() float64 {
 	Log.Panicf("Char cannot be a Scalar Float: '%c'", o.R)
 	panic(0)
 }
-func (o Num) GetScalarFloat() float64 {
+func (o Num) GetScalarCx() complex128 {
 	return o.F
+}
+func (o Num) GetScalarFloat() float64 {
+	if imag(o.F) != 0 {
+		log.Panicf("Number has imag part, cannot be used as real: %s", Cx2Str(o.F))
+	}
+	return real(o.F)
+}
+func (o Mat) GetScalarCx() complex128 {
+	if len(o.M) == 1 {
+		return o.M[1].GetScalarCx()
+	}
+	Log.Panicf("Matrix with %d entries cannot be a Scalar Complex", len(o.M))
+	panic(0)
 }
 func (o Mat) GetScalarFloat() float64 {
 	if len(o.M) == 1 {
@@ -178,6 +247,11 @@ func (o Mat) GetScalarFloat() float64 {
 	Log.Panicf("Matrix with %d entries cannot be a Scalar Float", len(o.M))
 	panic(0)
 }
+func (o Box) GetScalarCx() complex128 {
+	Log.Panicf("Box cannot be a Scalar Complex")
+	panic(0)
+}
+
 func (o Box) GetScalarFloat() float64 {
 	Log.Panicf("Box cannot be a Scalar Float")
 	panic(0)
@@ -267,16 +341,14 @@ func (a Char) Compare(x Val) int {
 	panic("NOT_REACHED")
 }
 func (a Num) Compare(x Val) int {
-	b, ok := x.(*Num)
-	if !ok {
-		Log.Panicf("Num::Compare to not-a-Num: %v", x)
-	}
+	fa := a.GetScalarFloat()
+	fx := x.GetScalarFloat()
 	switch {
-	case a.F < b.F:
+	case fa < fx:
 		return -1
-	case a.F == b.F:
+	case fa == fx:
 		return 0
-	case a.F > b.F:
+	case fa > fx:
 		return +1
 	}
 	panic("NOT_REACHED")
@@ -293,10 +365,12 @@ func (a Mat) Compare(x Val) int {
 		return +1
 	}
 	for i := range a.S {
+		fa := a.S[i]
+		fb := b.S[i]
 		switch {
-		case a.S[i] < b.S[i]:
+		case fa < fb:
 			return -1
-		case a.S[i] > b.S[i]:
+		case fa > fb:
 			return +1
 		}
 	}

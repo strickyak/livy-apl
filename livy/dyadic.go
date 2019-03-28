@@ -10,6 +10,7 @@ type DyadicFunc func(c *Context, a Val, b Val, axis int) Val
 var StandardDyadics = map[string]DyadicFunc{
 	"member": dyadicMember,
 	"e":      dyadicMember,
+	"j":      dyadicJ,
 
 	"rho": dyadicRho,
 	"p":   dyadicRho,
@@ -321,6 +322,12 @@ func asMat(a Val) *Mat {
 	return mat
 }
 
+func dyadicJ(c *Context, a Val, b Val, axis int) Val {
+	// TODO matrices
+	ca, cb := a.GetScalarCx(), b.GetScalarCx()
+	return &Num{ca + complex(0.0, 1.0)*cb}
+}
+
 func dyadicRho(c *Context, a Val, b Val, axis int) Val {
 	spec := GetVectorOfScalarInts(a)
 	outSize := MulReduce(spec)
@@ -363,7 +370,7 @@ func WrapFloatDyadic(fn FuncFloatFloatFloat) DyadicFunc {
 	return func(c *Context, a, b Val, axis int) Val {
 		x := a.GetScalarFloat()
 		y := b.GetScalarFloat()
-		return &Num{fn(x, y)}
+		return &Num{complex(fn(x, y), 0)}
 	}
 }
 
@@ -372,9 +379,9 @@ func WrapFloatBoolDyadic(fn FuncFloatFloatBool) DyadicFunc {
 		x := a.GetScalarFloat()
 		y := b.GetScalarFloat()
 		if fn(x, y) {
-			return &Num{1.0}
+			return &Num{complex(1.0, 0)}
 		} else {
-			return &Num{0.0}
+			return &Num{complex(0.0, 0)}
 		}
 	}
 }
@@ -945,7 +952,7 @@ func dyadicMember(c *Context, a Val, b Val, axis int) Val {
 		if !ok {
 			Log.Panicf("Dyadic `member` RHS element @%d not a number: %v", i, e)
 		}
-		floats[i] = num.F
+		floats[i] = num.GetScalarFloat()
 	}
 	floats.Sort()
 
@@ -954,10 +961,10 @@ func dyadicMember(c *Context, a Val, b Val, axis int) Val {
 		if !ok {
 			Log.Panicf("Dyadic `member` RHS element @%d not a number: %v", i, e)
 		}
-		j := sort.SearchFloat64s(floats, num.F)
+		j := sort.SearchFloat64s(floats, num.GetScalarFloat())
 
-		found := (j < len(floats) && floats[j] == num.F)
-		outVec[i] = &Num{boolf(found)}
+		found := (j < len(floats) && floats[j] == num.GetScalarFloat())
+		outVec[i] = &Num{complex(boolf(found), 0)}
 	}
 
 	return &Mat{outVec, outShape}
