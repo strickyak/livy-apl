@@ -12,7 +12,7 @@ type srcWantPair struct {
 }
 
 var parserTests = []srcWantPair{
-	{"+/ rho iota 8", "Monad(+/ Monad(rho Monad(iota (#8))))"},
+	{"+/ rho iota 8", "Monad(+/ Monad(rho Monad(iota (#(8+0i)))))"},
 	{"+/ rho iota Pi", "Monad(+/ Monad(rho Monad(iota (Pi))))"},
 }
 
@@ -35,11 +35,11 @@ func TestMonadic(t *testing.T) {
 		lex := Tokenize(test.src)
 		p := &Parser{}
 		expr, _ := p.ParseExpr(lex, 0)
-		Log.Printf("EXPR: %s", expr)
+		Log.Printf("EXPR: %s == %#v", expr, expr)
 		got := expr.String()
 
 		if got != test.want {
-			t.Errorf("Got %q wanted %q, for %q", got, test.want, test.src)
+			t.Errorf("Got %T %q wanted %q, for %q", expr, got, test.want, test.src)
 		}
 	}
 	println("250 OK")
@@ -282,6 +282,10 @@ var evalTests = []srcWantPair{
 	*/
 	{`A = 5 5 p i 99 ; A[ 1 2 ; 2 3 ] = 2 2 p 100 * i 4`, `[2 2 ]{0 100 200 300 } `},
 	{`A = 5 5 p i 99 ; A[ 1 2 ; 2 3 ] = 2 2 p 100 * i 4 ; A`, `[5 5 ]{0 1 2 3 4 5 6 0 100 9 10 11 200 300 14 15 16 17 18 19 20 21 22 23 24 } `},
+	// laminate
+	{`(3 4 p i1 100 ) laminate[0] (3 4 p 100 + i1 100)`, `[2 3 4 ]{1 2 3 4 5 6 7 8 9 10 11 12 101 102 103 104 105 106 107 108 109 110 111 112 } `},
+	{`(3 4 p i1 100 ) laminate[1] (3 4 p 100 + i1 100)`, `[3 2 4 ]{1 2 3 4 101 102 103 104 5 6 7 8 105 106 107 108 9 10 11 12 109 110 111 112 } `},
+	{`(3 4 p i1 100 ) laminate    (3 4 p 100 + i1 100)`, `[3 4 2 ]{1 101 2 102 3 103 4 104 5 105 6 106 7 107 8 108 9 109 10 110 11 111 12 112 } `},
 }
 
 func TestEval(t *testing.T) {

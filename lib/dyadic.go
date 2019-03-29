@@ -19,6 +19,7 @@ var StandardDyadics = map[string]DyadicFunc{
 
 	"transpose": dyadicTranspose,
 	",":         dyadicCatenate,
+	"laminate":  dyadicLaminate,
 	"rot":       dyadicRot,
 	"take":      dyadicTake,
 	"drop":      dyadicDrop,
@@ -805,6 +806,74 @@ func dyadicExpandOrCompress(c *Context, a Val, b Val, axis int, compressing bool
 		}
 	}
 	recurse(inShape, 0, outShape, 0)
+	return &Mat{M: outVec, S: outShape}
+}
+
+func dyadicLaminate(c *Context, a Val, b Val, axis int) Val {
+	ma, ok := a.(*Mat)
+	if !ok {
+		Log.Panicf("Dyadic `laminate` wants matrix on left, but got %#v", a)
+	}
+
+	mb, ok := b.(*Mat)
+	if !ok {
+		Log.Panicf("Dyadic `laminate` wants matrix on right, but got %#v", b)
+	}
+
+	aVec := ma.M
+	aShape := ma.S
+	aRank := len(aShape)
+	bVec := mb.M
+	bShape := mb.S
+	bRank := len(bShape)
+
+	if aRank != bRank {
+		Log.Panicf("Dyadic `,` wants same shape, but left shape is %v and right shape is %v", aShape, bShape)
+	}
+	for i := 0; i < aRank; i++ {
+		if aShape[i] != bShape[i] {
+			Log.Panicf("Dyadic `,` wants same shape, but left shape is %v and right shape is %v", aShape, bShape)
+		}
+	}
+	// axis is the newly created dimension, from 0 to aRank+1 (incl).
+	axis = mod(axis, aRank+1)
+
+	var outShape []int
+	for i := 0; i < aRank+1; i++ {
+		if i < axis {
+			outShape = append(outShape, aShape[i])
+		} else if i == axis {
+			outShape = append(outShape, 2) // New dimension has length 2.
+		} else {
+			outShape = append(outShape, aShape[i-1])
+		}
+	}
+	Log.Printf("Concatenate: lhs %v rhs %v out %v", aShape, bShape, outShape)
+
+	outVec := make([]Val, MulReduce(outShape))
+	newDimStride := MulReduce(aShape[axis:])
+
+	var recurse func(inShape []int, inOff int, outShape []int, outOff int)
+	recurse = func(inShape []int, inOff int, outShape []int, outOff int) {
+		if len(inShape) == 0 {
+			outVec[outOff] = aVec[inOff]
+			outVec[outOff+newDimStride] = bVec[inOff]
+			return
+		}
+
+		if len(inShape)+axis == aRank {
+			outShape = outShape[1:] // Skip the outShape when on the new axis.
+		}
+
+		inStride := MulReduce(inShape[1:])
+		outStride := MulReduce(outShape[1:])
+		for i := 0; i < inShape[0]; i++ {
+			recurse(inShape[1:], inOff+i*inStride, outShape[1:], outOff+i*outStride)
+		}
+	}
+
+	recurse(aShape, 0, outShape, 0)
+
 	return &Mat{M: outVec, S: outShape}
 }
 
