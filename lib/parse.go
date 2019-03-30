@@ -69,7 +69,7 @@ LOOP:
 		switch tt[i].Type {
 		case KeywordToken:
 			switch tt[i].Str {
-			case "then", "else", "fi", "do", "done":
+			case "THEN", "ELSE", "FI", "DO", "DONE":
 				break LOOP
 			default:
 				Log.Panicf("unexpected keyword: %q", tt[i].Str)
@@ -95,8 +95,8 @@ func (p *Parser) ParseWhile(lex *Lex, i int) (*While, int) {
 	i = j
 
 	t = tt[i]
-	if t.Str != "do" {
-		Log.Panicf("expected `do` but got %q", t.Str)
+	if t.Str != "DO" {
+		Log.Panicf("expected `DO` but got %q", t.Str)
 	}
 
 	i++
@@ -104,8 +104,8 @@ func (p *Parser) ParseWhile(lex *Lex, i int) (*While, int) {
 	doSeq, j := p.ParseSeq(lex, i)
 	i = j
 	t = tt[i]
-	if t.Str != "done" {
-		Log.Panicf("expected `done` but got %q", t.Str)
+	if t.Str != "DONE" {
+		Log.Panicf("expected `DONE` but got %q", t.Str)
 	}
 	z := &While{whileSeq, doSeq}
 	Log.Printf("ParseWhile returns %v", z)
@@ -120,8 +120,8 @@ func (p *Parser) ParseIf(lex *Lex, i int) (*Cond, int) {
 	i = j
 
 	t = tt[i]
-	if t.Str != "then" {
-		Log.Panicf("expected `then` but got %q", t.Str)
+	if t.Str != "THEN" {
+		Log.Panicf("expected `THEN` but got %q", t.Str)
 	}
 
 	i++
@@ -129,16 +129,16 @@ func (p *Parser) ParseIf(lex *Lex, i int) (*Cond, int) {
 	thenSeq, j := p.ParseSeq(lex, i)
 	i = j
 	t = tt[i]
-	if t.Str != "else" {
-		Log.Panicf("expected `else` but got %q", t.Str)
+	if t.Str != "ELSE" {
+		Log.Panicf("expected `ELSE` but got %q", t.Str)
 	}
 	i++
 	t = tt[i]
 	elseSeq, j := p.ParseSeq(lex, i)
 	i = j
 	t = tt[i]
-	if t.Str != "fi" {
-		Log.Panicf("expected `else` but got %q", t.Str)
+	if t.Str != "FI" {
+		Log.Panicf("expected `ELSE` but got %q", t.Str)
 	}
 	z := &Cond{ifSeq, thenSeq, elseSeq}
 	Log.Printf("ParseIf returns %v", z)
@@ -230,25 +230,25 @@ LOOP:
 		switch t.Type {
 		case KeywordToken:
 			switch t.Str {
-			case "break":
+			case "BREAK":
 				vec = append(vec, BREAK)
 				i++
-			case "continue":
+			case "CONTINUE":
 				vec = append(vec, CONTINUE)
 				i++
-			case "def":
+			case "DEF":
 				def, j := p.ParseDef(lex, i+1)
 				vec = append(vec, def)
 				i = j
-			case "if":
+			case "IF":
 				cond, j := p.ParseIf(lex, i+1)
 				vec = append(vec, cond)
 				i = j
-			case "while":
+			case "WHILE":
 				while, j := p.ParseWhile(lex, i+1)
 				vec = append(vec, while)
 				i = j
-			case "then", "else", "fi", "do", "done":
+			case "THEN", "ELSE", "FI", "DO", "DONE":
 				break LOOP
 			default:
 				Log.Panicf("initial keyword not implemented: %q", t.Str)
