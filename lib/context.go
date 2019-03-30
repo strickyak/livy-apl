@@ -3,6 +3,7 @@ package livy
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"sort"
 )
@@ -19,6 +20,21 @@ type Context struct {
 
 	StringExtension StringExtensionFunc
 	Extra           map[string]interface{}
+}
+
+func NewContext() *Context {
+	c := &Context{
+		Globals:  make(map[string]Val),
+		Monadics: StandardMonadics,
+		Dyadics:  StandardDyadics,
+		Extra:    make(map[string]interface{}),
+	}
+	c.Globals["Pi"] = &Num{math.Pi}
+	c.Globals["Tau"] = &Num{2.0 * math.Pi}
+	c.Globals["E"] = &Num{math.E}
+	c.Globals["Phi"] = &Num{math.Phi}
+	c.Globals["J"] = &Num{complex(0, 1)}
+	return c
 }
 
 func (c *Context) Command(s string) {

@@ -9,7 +9,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"math"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -72,16 +71,7 @@ func main() {
 	}
 	defer rl.Close()
 
-	c := &Context{
-		Globals:  make(map[string]Val),
-		Monadics: StandardMonadics,
-		Dyadics:  StandardDyadics,
-		Extra:    make(map[string]interface{}),
-	}
-	c.Globals["Pi"] = &Num{math.Pi}
-	c.Globals["Tau"] = &Num{2.0 * math.Pi}
-	c.Globals["E"] = &Num{math.E}
-	c.Globals["Phi"] = &Num{math.Phi}
+	c := NewContext()
 
 	i := 0
 	for {
