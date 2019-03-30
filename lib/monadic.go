@@ -115,8 +115,12 @@ var StandardMonadics = map[string]MonadicFunc{
 	"roundToEven": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.RoundToEven(b)
 	})),
-	"cbrt": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Cbrt(b)
+	"cbrt": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		if imag(b) == 0 {
+			return complex(math.Cbrt(real(b)), 0)
+		} else {
+			return cmplx.Pow(b, complex(1.0/3.0, 0))
+		}
 	})),
 	"sqrt": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
 		return cmplx.Sqrt(b)
@@ -168,8 +172,17 @@ var StandardMonadics = map[string]MonadicFunc{
 	"y1": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Y1(b)
 	})),
-	"neg": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
+	"neg": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
 		return -b
+	})),
+	"-": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return -b
+	})),
+	"+": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return +b
+	})),
+	"conjugate": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(real(b), -imag(b))
 	})),
 	"not": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		x := float2bool(b)
