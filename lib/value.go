@@ -85,6 +85,7 @@ func Cx2Str(c complex128) string {
 func (o Char) String() string {
 	return fmt.Sprintf("'%c' ", o.R)
 }
+
 func (o Num) String() string {
 	rl, im := real(o.F), imag(o.F)
 	if im == 0 {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "github.com/strickyak/livy-apl/fft"
 	_ "github.com/strickyak/livy-apl/image"
 	. "github.com/strickyak/livy-apl/lib"
 
