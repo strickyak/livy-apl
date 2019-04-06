@@ -109,12 +109,56 @@ var StandardMonadics = map[string]MonadicFunc{
 	"floor": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Floor(b)
 	})),
-	"round": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
-		return math.Round(b)
+	"round": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(math.Round(real(b)), math.Round(imag(b)))
+	})),
+	"round1": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(math.Round(real(10*b))/10, math.Round(imag(10*b))/10)
+	})),
+	"round2": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(math.Round(real(100*b))/100, math.Round(imag(100*b))/100)
+	})),
+	"round3": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(math.Round(real(1000*b))/1000, math.Round(imag(1000*b))/1000)
+	})),
+	"round4": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(math.Round(real(10000*b))/10000, math.Round(imag(10000*b))/10000)
+	})),
+	"round5": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(math.Round(real(100000*b))/100000, math.Round(imag(100000*b))/100000)
+	})),
+	"round6": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(math.Round(real(1000000*b))/1000000, math.Round(imag(1000000*b))/10000000)
+	})),
+	"round7": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(math.Round(real(10000000*b))/10000000, math.Round(imag(10000000*b))/100000000)
+	})),
+	"round8": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(math.Round(real(100000000*b))/100000000, math.Round(imag(100000000*b))/1000000000)
+	})),
+	"round9": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+		return complex(math.Round(real(1000000000*b))/1000000000, math.Round(imag(1000000000*b))/10000000000)
 	})),
 	"roundToEven": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.RoundToEven(b)
 	})),
+	"ki":     WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return 1024 * b })),
+	"mi":     WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return 1024 * 1024 * b })),
+	"gi":     WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return 1024 * 1024 * 1024 * b })),
+	"ti":     WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return 1024 * 1024 * 1024 * 1024 * b })),
+	"pi":     WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return 1024 * 1024 * 1024 * 1024 * 1024 * b })),
+	"ei":     WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return 1024 * 1024 * 1024 * 1024 * 1024 * 1024 * b })),
+	"ks":     WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return 1000 * b })),
+	"ms":     WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return 1000 * 1000 * b })),
+	"gs":     WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return 1000 * 1000 * 1000 * b })),
+	"ts":     WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return 1000 * 1000 * 1000 * 1000 * b })),
+	"ps":     WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return 1000 * 1000 * 1000 * 1000 * 1000 * b })),
+	"es":     WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return 1000 * 1000 * 1000 * 1000 * 1000 * 1000 * b })),
+	"millis": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return b / 1000 })),
+	"micros": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return b / 1000 / 1000 })),
+	"nanos":  WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return b / 1000 / 1000 / 1000 })),
+	"picos":  WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return b / 1000 / 1000 / 1000 / 1000 })),
+	"div":    WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 { return 1 / b })),
 	"cbrt": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
 		if imag(b) == 0 {
 			return complex(math.Cbrt(real(b)), 0)

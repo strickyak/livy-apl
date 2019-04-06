@@ -2,8 +2,8 @@ package fft
 
 import (
 	"github.com/mjibson/go-dsp/fft"
-	"log"
 	. "github.com/strickyak/livy-apl/lib"
+	"log"
 )
 
 func monadicFFT(c *Context, b Val, dim int) Val {
@@ -14,7 +14,7 @@ func monadicIFFT(c *Context, b Val, dim int) Val {
 	return monadicCxSliceToCxSlice(c, b, dim, fft.IFFT, "ifft")
 }
 
-func monadicCxSliceToCxSlice(c *Context, b Val, dim int, fn func([]complex128)[]complex128, name string) Val {
+func monadicCxSliceToCxSlice(c *Context, b Val, dim int, fn func([]complex128) []complex128, name string) Val {
 	Must(dim == -1) // For now.
 	m, ok := b.(*Mat)
 	if !ok {
@@ -33,7 +33,7 @@ func monadicCxSliceToCxSlice(c *Context, b Val, dim int, fn func([]complex128)[]
 	for i := 0; i < len(vec); i++ {
 		zz[i] = CxNum(out[i])
 	}
-	return &Mat{M:zz, S:[]int{len(zz)}}
+	return &Mat{M: zz, S: []int{len(zz)}}
 }
 
 func init() {
