@@ -18,10 +18,10 @@ type Context struct {
 	Dyadics    map[string]DyadicFunc
 	LocalStack []map[string]Val
 
-	FormatReal string
-	FormatImagPlus string
-	FormatImagMinus string
-	FormatComplexPlus string
+	FormatReal         string
+	FormatImagPlus     string
+	FormatImagMinus    string
+	FormatComplexPlus  string
 	FormatComplexMinus string
 
 	StringExtension StringExtensionFunc
@@ -30,14 +30,14 @@ type Context struct {
 
 func NewContext() *Context {
 	c := &Context{
-		Globals:  make(map[string]Val),
-		Monadics: StandardMonadics,
-		Dyadics:  StandardDyadics,
-		Extra:    make(map[string]interface{}),
-		FormatReal: "%g",
-		FormatImagPlus: "+j%g",
-		FormatImagMinus: "-j%g",
-		FormatComplexPlus: "%g-j%g",
+		Globals:            make(map[string]Val),
+		Monadics:           StandardMonadics,
+		Dyadics:            StandardDyadics,
+		Extra:              make(map[string]interface{}),
+		FormatReal:         "%g",
+		FormatImagPlus:     "+j%g",
+		FormatImagMinus:    "-j%g",
+		FormatComplexPlus:  "%g-j%g",
 		FormatComplexMinus: "%g+j%g",
 	}
 	c.Globals["Pi"] = &Num{math.Pi}
