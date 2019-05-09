@@ -33,7 +33,7 @@ func ValToTcl(v Val) chirp.T {
 	case *ChirpBox:
 		return t.X
 	case *Num:
-		Must(imag(t.F) == 0)  // Until I figure out what to do with imaginary numbers.
+		Must(imag(t.F) == 0) // Until I figure out what to do with imaginary numbers.
 		return chirp.MkFloat(real(t.F))
 	case *Mat:
 		return MatToTcl(t)
