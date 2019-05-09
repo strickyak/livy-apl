@@ -18,6 +18,12 @@ type Context struct {
 	Dyadics    map[string]DyadicFunc
 	LocalStack []map[string]Val
 
+	FormatReal string
+	FormatImagPlus string
+	FormatImagMinus string
+	FormatComplexPlus string
+	FormatComplexMinus string
+
 	StringExtension StringExtensionFunc
 	Extra           map[string]interface{}
 }
@@ -28,6 +34,11 @@ func NewContext() *Context {
 		Monadics: StandardMonadics,
 		Dyadics:  StandardDyadics,
 		Extra:    make(map[string]interface{}),
+		FormatReal: "%g",
+		FormatImagPlus: "+j%g",
+		FormatImagMinus: "-j%g",
+		FormatComplexPlus: "%g-j%g",
+		FormatComplexMinus: "%g+j%g",
 	}
 	c.Globals["Pi"] = &Num{math.Pi}
 	c.Globals["Tau"] = &Num{2.0 * math.Pi}
