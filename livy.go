@@ -16,12 +16,17 @@ import (
 	"strings"
 
 	"github.com/chzyer/readline"
+
+	extend "github.com/strickyak/livy-apl/extend"
+	_ "github.com/yak-labs/chirp-lang/goapi/default"
+	_ "github.com/yak-labs/chirp-lang/posix"
 )
 
 var Prompt = flag.String("prompt", "      ", "APL interpreter prompt")
 var Verbose = flag.Bool("v", false, "show debug messages on stderr")
 var CrashOnError = flag.Bool("e", false, "crash dump on error for debugging")
 var Raw = flag.Bool("raw", false, "print raw results for debugging")
+var Quiet = flag.Bool("q", false, "omit printing temporary var name and shape")
 
 func EvalString(c *Context, line string) (val Val, err error) {
 	if !*CrashOnError {
@@ -73,6 +78,7 @@ func main() {
 	defer rl.Close()
 
 	c := NewContext()
+	extend.Init(c)
 
 	i := 0
 	for {
@@ -109,15 +115,18 @@ func main() {
 		if *Raw {
 			fmt.Fprintf(os.Stdout, "%s = (%T) %s\n", name, result, result)
 		} else {
-			bb := bytes.NewBuffer(nil)
-			shape := result.Shape()
-			if len(shape) > 0 {
-				for _, x := range shape {
-					fmt.Fprintf(bb, "%d ", x)
+			if !*Quiet {
+				bb := bytes.NewBuffer(nil)
+				shape := result.Shape()
+				if len(shape) > 0 {
+					for _, x := range shape {
+						fmt.Fprintf(bb, "%d ", x)
+					}
+					fmt.Fprintf(bb, "rho")
 				}
-				fmt.Fprintf(bb, "rho")
+				fmt.Fprintf(os.Stdout, "   %s = (%T) %s\n", name, result, bb.String())
 			}
-			fmt.Fprintf(os.Stdout, "   %s = (%T) %s\n%s\n", name, result, bb.String(), result.Pretty())
+			fmt.Fprintf(os.Stdout, "%s\n", result.Pretty())
 		}
 		i++
 	}
