@@ -111,26 +111,23 @@ func (x Lex) String() string {
 }
 
 func Tokenize(s string) *Lex {
-	// Log.Printf("TOKENIZE %q", s)
 	lex := &Lex{
 		Source: s,
 	}
 	for lex.DoNextToken() {
-		// Log.Printf("LEX... %s", *lex)
 		continue
 	}
-	// Log.Printf("LEX... %s", *lex)
 
 	llt := len(lex.Tokens)
 	if llt == 0 || lex.Tokens[llt-1].Type != EndToken {
 		Log.Panicf("Syntax error after %q before %q", s[:lex.p], s[lex.p:])
 	}
 	if lex.p != len(s) {
-		Log.Panicf("OHNO did not parse all of %q: %d", s, lex.p)
+		Log.Panicf("Syntax error: did not parse all of %q: remaining part: %q", s, s[lex.p:])
 	}
-	for i, t := range lex.Tokens {
-		Log.Printf("Token [%d]: %s", i, t)
-	}
+	//for i, t := range lex.Tokens {
+	//Log.Printf("Token [%d]: %s", i, t)
+	//}
 	return lex
 }
 
@@ -155,6 +152,7 @@ func (lex *Lex) DoNextToken() bool {
 	// Try each matcher until one works.
 	for _, matcher := range matchers {
 		m := matcher.MatchFn(lex.Source[lex.p:])
+		// Log.Printf("%d: Matcher %v len %d on %q\n", lex.p, matcher, len(m), lex.Source[lex.p:])
 		if m != nil {
 			lex.Tokens = append(lex.Tokens, &Token{
 				Type:  matcher.Type,
