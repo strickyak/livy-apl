@@ -33,7 +33,8 @@ func ValToTcl(v Val) chirp.T {
 	case *ChirpBox:
 		return t.X
 	case *Num:
-		return chirp.MkFloat(t.F)
+		Must(imag(t.F) == 0)  // Until I figure out what to do with imaginary numbers.
+		return chirp.MkFloat(real(t.F))
 	case *Mat:
 		return MatToTcl(t)
 	case *Box:
@@ -84,6 +85,10 @@ func (o ChirpBox) GetScalarInt() int {
 
 func (o ChirpBox) GetScalarFloat() float64 {
 	return o.X.Float()
+}
+
+func (o ChirpBox) GetScalarCx() complex128 {
+	return complex(o.X.Float(), 0)
 }
 
 func (o ChirpBox) GetScalarOrNil() Val {
