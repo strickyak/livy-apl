@@ -91,7 +91,7 @@ var StandardMonadics = map[string]MonadicFunc{
 	"expm1": WrapMatMonadic(WrapFloatMonadic(func(b float64) float64 {
 		return math.Expm1(b)
 	})),
-	"Log": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
+	"log": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
 		return cmplx.Log(b)
 	})),
 	"log10": WrapMatMonadic(WrapCxMonadic(func(b complex128) complex128 {
