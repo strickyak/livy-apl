@@ -31,7 +31,7 @@ const (
 
 const RE_JUST_OPERATOR = `([-+*/\\,&|!=<>]+|[a-z][A-Za-z0-9_]*)`
 const RE_OPERATOR = `([-+*/\\,&|!=<>]+|[a-z][A-Za-z0-9_]*[/\\]?)`
-const RE_KEYWORD = `(DEF|IF|THEN|ELIF|ELSE|FI|WHILE|DO|DONE|BREAK|CONTINUE)\b`
+const RE_KEYWORD = `(def|if|then|elif|else|fi|while|do|done|break|continue)\b`
 const RE_REAL = `([-+]?[0-9]+([.][0-9]+)?([eE][-+]?[0-9]+)?)`
 const RE_COMPLEX = RE_REAL + `?([+-][jJ])` + RE_REAL
 const RE_COMPLEX_SPLIT = `(.*)([+-][jJ])(.*)`
