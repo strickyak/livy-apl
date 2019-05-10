@@ -670,22 +670,37 @@ func dyadicTakeOrDrop(c *Context, a Val, b Val, axis int, dropping bool) Val {
 	}
 
 	// Figure out the outShape (how many to copy) and the inStart (where to start copying from).
+	var prePad []int
+	var postPad []int
 	var outShape []int
 	var inStart []int
 	for i, sz := range inShape {
+		pre, post := 0, 0 // padding
 		k := abs(spec[i])
 		if k > sz {
-			Log.Panicf("Dyadic Take LHS[%d] abs too big, is %d; RHS shape is %v", i, spec[i], inShape)
+			if dropping {
+				// TODO
+				Log.Panicf("Dyadic Drop LHS[%d] abs too big, is %d; RHS shape is %v", i, spec[i], inShape)
+			} else {
+				if spec[i] > 0 {
+					post = k - sz
+				} else {
+					pre = k - sz
+				}
+				k = sz
+			}
 		}
 		if dropping {
 			k = sz - k // k is how many to keep.
 		}
-		outShape = append(outShape, k)
+		outShape = append(outShape, pre+k+post)
 		if xor(dropping, spec[i] < 0) {
 			inStart = append(inStart, sz-k)
 		} else {
 			inStart = append(inStart, 0)
 		}
+		prePad = append(prePad, pre)
+		postPad = append(postPad, post)
 	}
 	outVec := make([]Val, MulReduce(outShape))
 
@@ -693,20 +708,33 @@ func dyadicTakeOrDrop(c *Context, a Val, b Val, axis int, dropping bool) Val {
 	Log.Printf("inShape %v", inShape)
 	Log.Printf("outShape %v", outShape)
 
-	var recurse func(inStart []int, inShape []int, inOff int, outShape []int, outOff int)
-	recurse = func(inStart []int, inShape []int, inOff int, outShape []int, outOff int) {
+	var recurse func(inStart []int, inShape []int, inOff int, outShape []int, outOff int, pre, post []int, zeroing bool)
+	recurse = func(inStart []int, inShape []int, inOff int, outShape []int, outOff int, pre, post []int, zeroing bool) {
 		if len(inStart) == 0 {
 			Log.Printf("CP %d <= %d", outOff, inOff)
-			outVec[outOff] = inVec[inOff]
+			if zeroing {
+				outVec[outOff] = Zero
+			} else {
+				outVec[outOff] = inVec[inOff]
+			}
 			return
 		}
 		inStride := MulReduce(inShape[1:])
 		outStride := MulReduce(outShape[1:])
 		for i := 0; i < outShape[0]; i++ {
-			recurse(inStart[1:], inShape[1:], inOff+(inStart[0]+i)*inStride, outShape[1:], outOff+i*outStride)
+			nextInOff := inOff + (inStart[0]+i-pre[0])*inStride
+			nextOutOff := outOff + i*outStride
+			switch {
+			case i < pre[0]:
+				recurse(inStart[1:], inShape[1:], nextInOff, outShape[1:], nextOutOff, prePad[1:], postPad[1:], true)
+			case outShape[0]-1-i < post[0]:
+				recurse(inStart[1:], inShape[1:], nextInOff, outShape[1:], nextOutOff, prePad[1:], postPad[1:], true)
+			default:
+				recurse(inStart[1:], inShape[1:], nextInOff, outShape[1:], nextOutOff, prePad[1:], postPad[1:], zeroing)
+			}
 		}
 	}
-	recurse(inStart, inShape, 0, outShape, 0)
+	recurse(inStart, inShape, 0, outShape, 0, prePad, postPad, false)
 	return &Mat{M: outVec, S: outShape}
 }
 
