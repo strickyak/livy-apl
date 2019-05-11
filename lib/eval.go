@@ -124,7 +124,7 @@ func (o Monad) Eval(c *Context) Val {
 		if !ok {
 			Log.Panicf("Each syntax: No such dyadaic operator %q", op1)
 		}
-		fn = MkEachOp(o.Token.Str, fn1)
+		fn = MkEachOpMonadic(o.Token.Str, fn1)
 	}
 
 	b := o.B.Eval(c)
@@ -160,12 +160,21 @@ func (o Dyad) Eval(c *Context) Val {
 	}
 	var fn DyadicFunc
 	switch o.Token.Type {
+	default:
+		Log.Panicf("Default case: token %v", o.Token.Type)
 	case OperatorToken:
 		fn1, ok := c.Dyadics[o.Op]
 		if !ok {
 			Log.Panicf("No such dyadaic operator %q", o.Op)
 		}
 		fn = fn1
+	case EachToken:
+		op1 := o.Token.Match[1]
+		fn1, ok := c.Dyadics[op1]
+		if !ok {
+			Log.Panicf("Each syntax: No such dyadaic operator %q", op1)
+		}
+		fn = MkEachOpDyadic(o.Token.Str, fn1)
 	case InnerProductToken:
 		op1 := o.Token.Match[1]
 		fn1, ok := c.Dyadics[op1]

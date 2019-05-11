@@ -210,6 +210,46 @@ func MkInnerProduct(name string, fn1, fn2 DyadicFunc) DyadicFunc {
 	}
 }
 
+func MkEachOpDyadic(name string, fn DyadicFunc) DyadicFunc {
+	return func(c *Context, a, b Val, axis int) Val {
+		if axis != -1 {
+			Log.Panicf("dyadic ~ op: cannot use axis: %d", axis)
+		}
+		amat, aok := a.(*Mat)
+		bmat, bok := b.(*Mat)
+		var vec []Val
+		switch {
+		case aok && bok:
+			if len(amat.S) != len(bmat.S) {
+				Log.Panicf("left and right matrix need same rank, but got shapes %v and %v", amat.S, bmat.S)
+			}
+			// TODO EQ
+			if MulReduce(amat.S) != MulReduce(bmat.S) {
+				Log.Panicf("left and right matrix need same shape, but got shapes %v and %v", amat.S, bmat.S)
+			}
+			for i, e := range amat.M {
+				x := fn(c, e, bmat.M[i], -1)
+				vec = append(vec, x)
+			}
+			return &Mat{vec, amat.S}
+		case aok:
+			for _, e := range amat.M {
+				x := fn(c, e, b, -1)
+				vec = append(vec, x)
+			}
+			return &Mat{vec, amat.S}
+		case bok:
+			for _, e := range bmat.M {
+				x := fn(c, a, e, -1)
+				vec = append(vec, x)
+			}
+			return &Mat{vec, bmat.S}
+		default:
+			return fn(c, a, b, -1)
+		}
+	}
+}
+
 func MkReduceOrScanOp(name string, fn DyadicFunc, identity Val, toScan bool) MonadicFunc {
 	verb := "reduce"
 	if toScan {
@@ -876,7 +916,7 @@ func dyadicLaminate(c *Context, a Val, b Val, axis int) Val {
 			outShape = append(outShape, aShape[i-1])
 		}
 	}
-	Log.Printf("Concatenate: lhs %v rhs %v out %v", aShape, bShape, outShape)
+	Log.Printf("Laminate: lhs %v rhs %v out %v", aShape, bShape, outShape)
 
 	outVec := make([]Val, MulReduce(outShape))
 	newDimStride := MulReduce(aShape[axis:])
@@ -906,14 +946,29 @@ func dyadicLaminate(c *Context, a Val, b Val, axis int) Val {
 }
 
 func dyadicCatenate(c *Context, a Val, b Val, axis int) Val {
-	ma, ok := a.(*Mat)
-	if !ok {
-		Log.Panicf("Dyadic `,` wants matrix on left, but got %#v", a)
+	ma, aok := a.(*Mat)
+	mb, bok := b.(*Mat)
+	if !aok && !bok {
+		// Concat two scalars into a pair.
+		return &Mat{[]Val{a, b}, []int{2}}
 	}
 
-	mb, ok := b.(*Mat)
-	if !ok {
-		Log.Panicf("Dyadic `,` wants matrix on right, but got %#v", b)
+	if !aok {
+		n := len(mb.S)
+		newShape := make([]int, n)
+		copy(newShape, mb.S)
+		axis = mod(axis, n)
+		newShape[axis] = 1
+		ma = &Mat{RepeatVal(a, MulReduce(newShape)), newShape}
+	}
+
+	if !bok {
+		n := len(ma.S)
+		newShape := make([]int, n)
+		copy(newShape, ma.S)
+		axis = mod(axis, n)
+		newShape[axis] = 1
+		mb = &Mat{RepeatVal(b, MulReduce(newShape)), newShape}
 	}
 
 	aVec := ma.M
@@ -1091,4 +1146,12 @@ func dyadicMember(c *Context, a Val, b Val, axis int) Val {
 	}
 
 	return &Mat{outVec, outShape}
+}
+
+func RepeatVal(a Val, n int) []Val {
+	z := make([]Val, n)
+	for i, _ := range z {
+		z[i] = a
+	}
+	return z
 }

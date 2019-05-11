@@ -242,7 +242,7 @@ func boolf(a bool) float64 {
 	}
 }
 
-func MkEachOp(name string, fn MonadicFunc) MonadicFunc {
+func MkEachOpMonadic(name string, fn MonadicFunc) MonadicFunc {
 	return func(c *Context, b Val, axis int) Val {
 		mat, ok := b.(*Mat)
 		if !ok {
