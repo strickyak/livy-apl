@@ -15,8 +15,8 @@ const (
 	OperatorToken
 	OpenToken
 	CloseToken
-	BraToken
-	KetToken
+	OpenSquareToken
+	CloseSquareToken
 	SemiToken
 	InnerProductToken
 	OuterProductToken
@@ -46,8 +46,8 @@ var MatchOpen = regexp.MustCompile(`^[(]`).FindStringSubmatch
 var MatchClose = regexp.MustCompile(`^[)]`).FindStringSubmatch
 var MatchOpenCurly = regexp.MustCompile(`^[{]`).FindStringSubmatch
 var MatchCloseCurly = regexp.MustCompile(`^[}]`).FindStringSubmatch
-var MatchBra = regexp.MustCompile(`^[[]`).FindStringSubmatch
-var MatchKet = regexp.MustCompile(`^[]]`).FindStringSubmatch
+var MatchOpenSquare = regexp.MustCompile(`^[[]`).FindStringSubmatch
+var MatchCloseSquare = regexp.MustCompile(`^[]]`).FindStringSubmatch
 var MatchSemi = regexp.MustCompile(`^[;\n]`).FindStringSubmatch
 var MatchString = regexp.MustCompile(`^(["]([^"\\]|[\\].)*["])`).FindStringSubmatch
 
@@ -79,8 +79,8 @@ var matchers = []Matcher{
 	{CloseToken, MatchClose},
 	{OpenCurlyToken, MatchOpenCurly},
 	{CloseCurlyToken, MatchCloseCurly},
-	{BraToken, MatchBra},
-	{KetToken, MatchKet},
+	{OpenSquareToken, MatchOpenSquare},
+	{CloseSquareToken, MatchCloseSquare},
 	{SemiToken, MatchSemi},
 	{StringToken, MatchString},
 }

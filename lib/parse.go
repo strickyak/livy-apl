@@ -40,7 +40,7 @@ func (p *Parser) ParseBracket(lex *Lex, i int) ([]Expression, int) {
 	var tmp Expression
 	for {
 		switch lex.Tokens[i].Type {
-		case KetToken:
+		case CloseSquareToken:
 			vec = append(vec, tmp)
 			i++
 			return vec, i
@@ -165,7 +165,7 @@ func (p *Parser) ParseDef(lex *Lex, i int) (*Def, int) {
 	name := t.Str
 	i++
 	t = tt[i]
-	if t.Type == BraToken {
+	if t.Type == OpenSquareToken {
 		i++
 		t = tt[i]
 		if t.Type != VariableToken {
@@ -175,7 +175,7 @@ func (p *Parser) ParseDef(lex *Lex, i int) (*Def, int) {
 		locals = append(locals, axis)
 		i++
 		t = tt[i]
-		if t.Type != KetToken {
+		if t.Type != CloseSquareToken {
 			Log.Panicf("expected close-bracket def operator open-bracket axis, but got %v", t)
 		}
 		i++
@@ -253,20 +253,20 @@ LOOP:
 			default:
 				Log.Panicf("initial keyword not implemented: %q", t.Str)
 			}
-		case EndToken, CloseToken, KetToken, SemiToken, CloseCurlyToken:
+		case EndToken, CloseToken, CloseSquareToken, SemiToken, CloseCurlyToken:
 			break LOOP
-		case BraToken:
+		case OpenSquareToken:
 			Log.Panicf("Unexpected `[` at position %d: %s", t.Pos, lex.Source)
 		case OpenCurlyToken:
 			Log.Panicf("Unexpected `{` at position %d: %s", t.Pos, lex.Source)
 		case EachToken, ScanToken, ReduceToken, InnerProductToken, OuterProductToken, OperatorToken:
 			axis := Expression(nil)
 			var j int
-			if tt[i+1].Type == BraToken {
+			if tt[i+1].Type == OpenSquareToken {
 				Log.Printf("Axis1")
 				axis, j = p.ParseExpr(lex, i+2)
 				Log.Printf("Axis2 %d %s", j, axis)
-				if tt[j].Type != KetToken {
+				if tt[j].Type != CloseSquareToken {
 					Log.Panicf("Expected ']' but got %q after subscript", tt[i].Str)
 				}
 				i = j // Don't add 1 here; ParseExpr just below gets i+1.
@@ -328,7 +328,7 @@ LOOP:
 		case VariableToken:
 			variable := &Variable{t.Str}
 			i++
-			if tt[i].Type == BraToken {
+			if tt[i].Type == OpenSquareToken {
 				Log.Printf("B1")
 				subs, j := p.ParseBracket(lex, i)
 				Log.Printf("B2 %d %s", j, subs)
@@ -342,7 +342,7 @@ LOOP:
 			expr, j := p.ParseExpr(lex, i+1)
 			i = j + 1
 			// Allow brackets after parens e.g. (iota1 10)[2 4 6]
-			if tt[i].Type == BraToken {
+			if tt[i].Type == OpenSquareToken {
 				Log.Printf("B1")
 				subs, j := p.ParseBracket(lex, i)
 				Log.Printf("B2 %d %s", j, subs)
