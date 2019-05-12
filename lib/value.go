@@ -33,9 +33,11 @@ type Val interface {
 	GetScalarOrNil() Val
 }
 
+/*
 type Char struct {
 	R rune
 }
+*/
 
 type Num struct {
 	F complex128
@@ -82,9 +84,11 @@ func Cx2Str(c complex128) string {
 	return Num{c}.String()
 }
 
+/*
 func (o Char) String() string {
 	return fmt.Sprintf("'%c' ", o.R)
 }
+*/
 
 func (o Num) String() string {
 	rl, im := real(o.F), imag(o.F)
@@ -117,9 +121,11 @@ func (o Box) String() string {
 	return fmt.Sprintf("Box(%v) ", o.X)
 }
 
+/*
 func (o Char) Pretty() string {
 	return fmt.Sprintf("'%c' ", o.R)
 }
+*/
 func (o Num) Pretty() string {
 	return fmt.Sprintf("%s ", o)
 }
@@ -189,10 +195,12 @@ func (o Box) Pretty() string {
 	return fmt.Sprintf("(Box of %T: %v) ", o.X, o.X)
 }
 
+/*
 func (o Char) GetScalarInt() int {
 	Log.Panicf("Char cannot be a Scalar Int: '%c'", o.R)
 	panic(0)
 }
+*/
 func (o Num) GetScalarInt() int {
 	re, im := real(o.F), imag(o.F)
 	if im != 0 {
@@ -216,6 +224,7 @@ func (o Box) GetScalarInt() int {
 	panic(0)
 }
 
+/*
 func (o Char) GetScalarCx() complex128 {
 	Log.Panicf("Char cannot be a Scalar Complex: '%c'", o.R)
 	panic(0)
@@ -224,6 +233,7 @@ func (o Char) GetScalarFloat() float64 {
 	Log.Panicf("Char cannot be a Scalar Float: '%c'", o.R)
 	panic(0)
 }
+*/
 func (o Num) GetScalarCx() complex128 {
 	return o.F
 }
@@ -257,9 +267,11 @@ func (o Box) GetScalarFloat() float64 {
 	panic(0)
 }
 
+/*
 func (o Char) GetScalarOrNil() Val {
 	return o
 }
+*/
 func (o Num) GetScalarOrNil() Val {
 	return o
 }
@@ -273,9 +285,11 @@ func (o Box) GetScalarOrNil() Val {
 	return o
 }
 
+/*
 func (o Char) Size() int {
 	return 1
 }
+*/
 func (o Num) Size() int {
 	return 1
 }
@@ -286,9 +300,11 @@ func (o Box) Size() int {
 	return 1
 }
 
+/*
 func (o Char) Shape() []int {
 	return nil
 }
+*/
 func (o Num) Shape() []int {
 	return nil
 }
@@ -299,9 +315,11 @@ func (o Box) Shape() []int {
 	return nil
 }
 
+/*
 func (o Char) Ravel() []Val {
 	return []Val{o}
 }
+*/
 func (o Num) Ravel() []Val {
 	return []Val{o}
 }
@@ -312,9 +330,11 @@ func (o Box) Ravel() []Val {
 	return []Val{o}
 }
 
+/*
 func (o Char) ValEnum() ValEnum {
 	return CharVal
 }
+*/
 func (o Num) ValEnum() ValEnum {
 	return NumVal
 }
@@ -325,6 +345,7 @@ func (o Box) ValEnum() ValEnum {
 	return BoxVal
 }
 
+/*
 func (a Char) Compare(x Val) int {
 	b, ok := x.(*Char)
 	if !ok {
@@ -340,6 +361,7 @@ func (a Char) Compare(x Val) int {
 	}
 	panic("NOT_REACHED")
 }
+*/
 func (a Num) Compare(x Val) int {
 	fa := a.GetScalarFloat()
 	fx := x.GetScalarFloat()
