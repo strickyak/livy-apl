@@ -34,7 +34,7 @@ type Parser struct {
 	Context *Context
 }
 
-func (p *Parser) ParseBracket(lex *Lex, i int) ([]Expression, int) {
+func (p *Parser) ParseSquare(lex *Lex, i int) ([]Expression, int) {
 	i++
 	var vec []Expression
 	var tmp Expression
@@ -330,7 +330,7 @@ LOOP:
 			i++
 			if tt[i].Type == OpenSquareToken {
 				Log.Printf("B1")
-				subs, j := p.ParseBracket(lex, i)
+				subs, j := p.ParseSquare(lex, i)
 				Log.Printf("B2 %d %s", j, subs)
 				vec = append(vec, &Subscript{variable, subs})
 				Log.Printf("B3 %s", vec)
@@ -344,7 +344,7 @@ LOOP:
 			// Allow brackets after parens e.g. (iota1 10)[2 4 6]
 			if tt[i].Type == OpenSquareToken {
 				Log.Printf("B1")
-				subs, j := p.ParseBracket(lex, i)
+				subs, j := p.ParseSquare(lex, i)
 				Log.Printf("B2 %d %s", j, subs)
 				vec = append(vec, &Subscript{expr, subs})
 				Log.Printf("B3 %s", vec)
