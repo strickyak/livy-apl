@@ -1,6 +1,8 @@
 package livy
 
 import (
+	"bytes"
+	"fmt"
 	"math"
 	"math/cmplx"
 	"sort"
@@ -13,6 +15,8 @@ var StandardMonadics = map[string]MonadicFunc{
 	"unbox": monadicUnbox,
 	"b":     monadicBox,
 	"u":     monadicUnbox,
+	"s2b":   monadicS2B,
+	"b2s":   monadicB2S,
 
 	"up":        monadicUp,
 	"down":      monadicDown,
@@ -482,6 +486,45 @@ func monadicUpDown(c *Context, b Val, reverse bool, name string) Val {
 	}
 
 	return &Mat{outVec, []int{n}}
+}
+func monadicB2S(c *Context, b Val, axis int) Val {
+	mat, ok := b.(*Mat)
+	if !ok {
+		Log.Panicf("b2s: Not a matrix")
+	}
+	if len(mat.S) != 1 {
+		Log.Panicf("b2s: Not a matrix of rank 1")
+	}
+	n := mat.S[0]
+	var bb bytes.Buffer
+	for i := 0; i < n; i++ {
+		x := mat.M[i].GetScalarInt()
+		if x < 0 || x > 255 {
+			Log.Panicf("b2s: not a byte: %d", x)
+		}
+		bb.WriteByte(byte(x & 255))
+	}
+	return &Box{bb.String()}
+}
+func monadicS2B(c *Context, b Val, axis int) Val {
+	box, ok := b.(*Box)
+	if !ok {
+		Log.Panicf("s2b: Not a string in a box, not even a box")
+	}
+	str, ok := box.X.(string)
+	if !ok {
+		s, ok := box.X.(fmt.Stringer)
+		if !ok {
+			Log.Panicf("s2b: Not a string (or a Stringer) in a box")
+		}
+		str = s.String()
+	}
+	n := len(str)
+	z := make([]Val, n)
+	for i := 0; i < n; i++ {
+		z[i] = IntNum(int(str[i]))
+	}
+	return &Mat{z, []int{n}}
 }
 func monadicBox(c *Context, b Val, axis int) Val {
 	return &Box{b}

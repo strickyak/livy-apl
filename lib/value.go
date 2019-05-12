@@ -192,7 +192,14 @@ func (o Mat) Pretty() string {
 	return bb.String()
 }
 func (o Box) Pretty() string {
-	return fmt.Sprintf("(Box of %T: %v) ", o.X, o.X)
+	switch t := o.X.(type) {
+	case string:
+		return fmt.Sprintf("%q", t)
+	case fmt.Stringer:
+		return fmt.Sprintf("%q", t.String())
+	default:
+		return fmt.Sprintf("(Box of %T: %v) ", o.X, o.X)
+	}
 }
 
 /*
@@ -454,6 +461,10 @@ func CxNum(f complex128) *Num {
 
 func FloatNum(f float64) *Num {
 	return &Num{complex(f, 0.0)}
+}
+
+func IntNum(i int) *Num {
+	return &Num{complex(float64(i), 0.0)}
 }
 
 func Must(predicate bool) {

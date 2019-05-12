@@ -1,8 +1,8 @@
 package extend
 
 import (
-	"fmt"
-	"log"
+	//"fmt"
+	//"log"
 
 	. "github.com/strickyak/livy-apl/lib"
 	chirp "github.com/yak-labs/chirp-lang"
@@ -30,8 +30,10 @@ func MatToTcl(mat *Mat) chirp.T {
 
 func ValToTcl(v Val) chirp.T {
 	switch t := v.(type) {
-	case *ChirpBox:
-		return t.X
+	/*
+		case *ChirpBox:
+			return t.X
+	*/
 	case *Num:
 		Must(imag(t.F) == 0) // Until I figure out what to do with imaginary numbers.
 		return chirp.MkFloat(real(t.F))
@@ -48,11 +50,11 @@ func monadicTcl(c *Context, b Val, axis int) Val {
 	tcl := ValToTcl(b)
 	frame := c.Extra["chirp"].(*chirp.Frame)
 	z := frame.Eval(tcl)
-	return &ChirpBox{z}
+	return &Box{z}
 }
 
 func ChirpStringExtension(s string) Expression {
-	return &Literal{&ChirpBox{chirp.MkString(s)}}
+	return &Literal{&Box{s}}
 }
 
 func Init(c *Context) {
@@ -61,6 +63,7 @@ func Init(c *Context) {
 	c.Monadics["tcl"] = monadicTcl
 }
 
+/*
 type ChirpBox struct {
 	X chirp.T
 }
@@ -124,3 +127,4 @@ func (a ChirpBox) Compare(x Val) int {
 	}
 	panic("NOT_REACHED")
 }
+*/
