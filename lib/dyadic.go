@@ -601,79 +601,85 @@ func GetVectorOfScalarInts(a Val) []int {
 }
 
 func dyadicRot(c *Context, a Val, b Val, axis int) Val {
+	mat, bok := b.(*Mat)
+	if !bok {
+		Log.Panicf("Cannot rotate a non-matrix")
+	}
+	shape := mat.S     // in & out shape.
+	rank := len(shape) // in & out rank.
+	if rank == 0 {
+		return b
+	}
+	axis = mod(axis, rank)
+	revaxis := rank - axis
+
 	// spec is the rearrangement specification.
 	var spec []int
-	spec = GetVectorOfScalarInts(a)
-	/*
-		specMat, ok := a.(*Mat)
-		if !ok {
-			// degenerate vector from scalar.
-			spec = append(spec, a.GetScalarInt())
-		} else {
-			// convert vector to ints.
-			for _, x := range specMat.M {
-				println(x)
-				spec = append(spec, x.GetScalarInt())
+	var specShape []int
+	amat, aok := a.(*Mat)
+	if aok {
+		if len(amat.S)+1 != len(mat.S) {
+			Log.Panicf("rotate: LHS has shape %v; RHS has shape %v; axis is %d; shape of LHS should be 1 shorter than shape of RHS", amat.S, mat.S, axis)
+		}
+		spec = GetVectorOfScalarInts(a)
+		j := 0
+		for i, e := range mat.S {
+			if i == axis {
+				// skip chosen axis.
+			} else {
+				if amat.S[j] != e {
+					Log.Panicf("rotate: LHS has shape %v; RHS has shape %v; axis is %d; dim %d of LHS should match dim %d of RHS", amat.S, mat.S, axis, j, i)
+				}
+				specShape = append(specShape, e)
+				j++
 			}
 		}
-	*/
-	mat, ok := b.(*Mat)
-	if !ok {
-		// scalar is like 1x1, whose rot or flip is itself.
-		return b
-	}
-	inVec := mat.M
-	inShape := mat.S
-	n := len(inShape)
-	if n < 1 {
-		// rot or flip on Emptiness yields Emptiness.
-		return b
-	}
-	axis = mod(axis, n)
-	revaxis := n - axis
-
-	// Result shape
-	var outShape []int
-	for i, sz := range inShape {
-		if i == axis {
-			outShape = append(outShape, len(spec))
-		} else {
-			outShape = append(outShape, sz)
+	} else {
+		r := a.GetScalarInt()
+		for i, e := range mat.S {
+			if i != axis {
+				specShape = append(specShape, e)
+			}
+		}
+		n := MulReduce(specShape)
+		for i := 0; i < n; i++ {
+			spec = append(spec, r)
 		}
 	}
-	outSize := MulReduce(outShape)
-	if outSize < 1 {
-		return &Mat{M: nil, S: outShape}
-	}
-	outVec := make([]Val, outSize)
 
-	var recurse func(inShape []int, inOff int, outShape []int, outOff int)
-	recurse = func(inShape []int, inOff int, outShape []int, outOff int) {
-		switch len(outShape) {
+	inVec := mat.M
+	var outVec []Val
+
+	var recurse func(shape, specShape []int, inOff, outOff int, spec []int, deferStart, deferStride, deferLen int)
+	recurse = func(shape, specShape []int, inOff, outOff int, spec []int, deferStart, deferStride, deferLen int) {
+		switch len(shape) {
 		case 0:
-			// Log.Printf("Assign out [%d] <- in [%d]", outOff, inOff)
-			outVec[outOff] = inVec[inOff]
+			{
+				// Log.Printf("[rot] in=%d out=%d spec=%d start=%d deferStride=%d deferLen=%d", inOff, outOff, spec, deferStart, deferStride, deferLen)
+				r := mod(deferStart+spec[0], deferLen)
+				x := inVec[inOff+r*deferStride]
+				outVec = append(outVec, x)
+			}
 		case revaxis:
-			inStride := MulReduce(inShape[1:])
-			outStride := MulReduce(outShape[1:])
-			for o := 0; o < outShape[0]; o++ {
-				i := spec[o]
-				i = mod(i, inShape[0])
-				recurse(inShape[1:], inOff+i*inStride,
-					outShape[1:], outOff+o*outStride)
+			{
+				stride := MulReduce(shape[1:])
+				for j := 0; j < shape[0]; j++ {
+					recurse(shape[1:], specShape, inOff, outOff+j*stride, spec, j, stride, shape[0])
+				}
 			}
 		default:
-			inStride := MulReduce(inShape[1:])
-			outStride := MulReduce(outShape[1:])
-			for o := 0; o < outShape[0]; o++ {
-				i := o
-				recurse(inShape[1:], inOff+i*inStride,
-					outShape[1:], outOff+o*outStride)
+			{
+				stride := MulReduce(shape[1:])
+				specStride := MulReduce(specShape[1:])
+				for j := 0; j < shape[0]; j++ {
+					// Log.Printf("default j=%d (in=%d off=%d)  shape=%v   stride=%d spec=%v", j, inOff, outOff, shape, stride, spec)
+					recurse(shape[1:], specShape[1:], inOff+j*stride, outOff+j*stride, spec[j*specStride:], deferStart, deferStride, deferLen)
+				}
 			}
 		}
 	}
-	recurse(inShape, 0, outShape, 0)
-	return &Mat{M: outVec, S: outShape}
+	recurse(shape, specShape, 0, 0, spec, 0, 0, 0)
+	return &Mat{M: outVec, S: shape}
 }
 
 func abs(x int) int {
