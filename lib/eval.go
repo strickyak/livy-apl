@@ -366,7 +366,7 @@ func (o Subscript) PreEval(c *Context) (mat *Mat, newShape []int, subscripts [][
 }
 func (o Subscript) Eval(c *Context) Val {
 	mat, newShape, subscripts := o.PreEval(c)
-	newSize := MulReduce(newShape)
+	newSize := Product(newShape)
 	newMat := &Mat{M: make([]Val, newSize), S: newShape}
 	if len(newShape) > 0 {
 		copyIntoSubscriptedMatrix(newShape, subscripts, 0, mat, mat.S, newMat.M, 0)
@@ -427,7 +427,7 @@ func (o Subscript) Assign(c *Context, b Val) Val {
 			oldOff++
 			return
 		}
-		newStride := MulReduce(newShape[1:])
+		newStride := Product(newShape[1:])
 		for _, j := range subscripts[0] {
 			recurse(subscripts[1:], newShape[1:], newOff+j*newStride)
 		}
@@ -448,8 +448,8 @@ func copyIntoSubscriptedMatrix(shape []int, subscripts [][]int, subOffset int, m
 		}
 	} else {
 		for i := 0; i < shape[0]; i++ {
-			nextOffset := offset + MulReduce(shape[1:])*i
-			nextSubOffset := subOffset + MulReduce(matShape[1:])*subscripts[0][i]
+			nextOffset := offset + Product(shape[1:])*i
+			nextSubOffset := subOffset + Product(matShape[1:])*subscripts[0][i]
 			copyIntoSubscriptedMatrix(shape[1:], subscripts[1:], nextSubOffset, mat, matShape[1:], z, nextOffset)
 		}
 	}
@@ -463,7 +463,7 @@ func intRange(n int) []int {
 	return z
 }
 
-func MulReduce(v []int) int {
+func Product(v []int) int {
 	z := 1
 	for _, e := range v {
 		z *= e

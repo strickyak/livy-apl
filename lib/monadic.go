@@ -394,13 +394,13 @@ func transposeMonadic(c *Context, b Val, axis int) Val {
 
 	var spec []Val
 	for i := 0; i < rank; i++ {
-		switch mod(i, rank) {
-		case mod(rank+axis, rank):
-			spec = append(spec, &Num{complex(float64(mod(i-1, rank)), 0)})
-		case mod(rank+axis-1, rank):
-			spec = append(spec, &Num{complex(float64(mod(i+1, rank)), 0)})
+		switch Mod(i, rank) {
+		case Mod(rank+axis, rank):
+			spec = append(spec, &Num{complex(float64(Mod(i-1, rank)), 0)})
+		case Mod(rank+axis-1, rank):
+			spec = append(spec, &Num{complex(float64(Mod(i+1, rank)), 0)})
 		default:
-			spec = append(spec, &Num{complex(float64(mod(i, rank)), 0)})
+			spec = append(spec, &Num{complex(float64(Mod(i, rank)), 0)})
 		}
 	}
 	lhs := &Mat{spec, []int{len(spec)}}
