@@ -360,24 +360,47 @@ func WrapMatMonadic(fn MonadicFunc) MonadicFunc {
 func rotMonadic(c *Context, b Val, axis int) Val {
 	mat, ok := b.(*Mat)
 	if !ok {
-		// scalar is like 1x1, whose rot or flip is itself.
-		return b
+		Log.Panicf("monadic rot: Cannot reverse a non-matrix")
 	}
 
 	shape := mat.S
-	n := len(shape)
-	if n < 1 {
-		// rot or flip on Emptiness yields Emptiness.
+	rank := len(shape)
+	if len(mat.M) < 2 {
 		return b
 	}
-	axis = (((axis % n) + n) % n)
-
+	axis = Mod(axis, rank)
 	axisLen := shape[axis]
-	var reversed []Val
-	for i := axisLen - 1; i >= 0; i-- {
-		reversed = append(reversed, &Num{complex(float64(i), 0)})
+	revaxis := rank - axis
+
+	inVec := mat.M
+	var outVec []Val
+
+	var recurse func(shape []int, inOff int)
+	recurse = func(shape []int, inOff int) {
+		switch len(shape) {
+		case 0:
+			{
+				x := inVec[inOff]
+				outVec = append(outVec, x)
+			}
+		case revaxis:
+			{
+				stride := Product(shape[1:])
+				for j := 0; j < shape[0]; j++ {
+					recurse(shape[1:], inOff+(axisLen-1-j)*stride)
+				}
+			}
+		default:
+			{
+				stride := Product(shape[1:])
+				for j := 0; j < shape[0]; j++ {
+					recurse(shape[1:], inOff+j*stride)
+				}
+			}
+		}
 	}
-	return dyadicRot(c, &Mat{reversed, []int{axisLen}}, b, axis)
+	recurse(shape, 0)
+	return &Mat{M: outVec, S: shape}
 }
 
 func transposeMonadic(c *Context, b Val, axis int) Val {

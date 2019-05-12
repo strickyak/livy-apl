@@ -512,9 +512,7 @@ func WrapMatMatDyadic(fn DyadicFunc) DyadicFunc {
 			}
 		}
 
-		//Log.Printf("ONE %s", a)
 		xs := a.GetScalarOrNil()
-		//Log.Printf("TWO %s", xs)
 		if xs == nil {
 			Log.Panicf("LHS neither matching matrix nor scalar: %s", a)
 		}
@@ -650,12 +648,11 @@ func dyadicRot(c *Context, a Val, b Val, axis int) Val {
 	inVec := mat.M
 	var outVec []Val
 
-	var recurse func(shape, specShape []int, inOff, outOff int, spec []int, deferStart, deferStride, deferLen int)
-	recurse = func(shape, specShape []int, inOff, outOff int, spec []int, deferStart, deferStride, deferLen int) {
+	var recurse func(shape, specShape []int, inOff int, spec []int, deferStart, deferStride, deferLen int)
+	recurse = func(shape, specShape []int, inOff int, spec []int, deferStart, deferStride, deferLen int) {
 		switch len(shape) {
 		case 0:
 			{
-				// Log.Printf("[rot] in=%d out=%d spec=%d start=%d deferStride=%d deferLen=%d", inOff, outOff, spec, deferStart, deferStride, deferLen)
 				r := Mod(deferStart+spec[0], deferLen)
 				x := inVec[inOff+r*deferStride]
 				outVec = append(outVec, x)
@@ -664,7 +661,7 @@ func dyadicRot(c *Context, a Val, b Val, axis int) Val {
 			{
 				stride := Product(shape[1:])
 				for j := 0; j < shape[0]; j++ {
-					recurse(shape[1:], specShape, inOff, outOff+j*stride, spec, j, stride, shape[0])
+					recurse(shape[1:], specShape, inOff, spec, j, stride, shape[0])
 				}
 			}
 		default:
@@ -672,13 +669,12 @@ func dyadicRot(c *Context, a Val, b Val, axis int) Val {
 				stride := Product(shape[1:])
 				specStride := Product(specShape[1:])
 				for j := 0; j < shape[0]; j++ {
-					// Log.Printf("default j=%d (in=%d off=%d)  shape=%v   stride=%d spec=%v", j, inOff, outOff, shape, stride, spec)
-					recurse(shape[1:], specShape[1:], inOff+j*stride, outOff+j*stride, spec[j*specStride:], deferStart, deferStride, deferLen)
+					recurse(shape[1:], specShape[1:], inOff+j*stride, spec[j*specStride:], deferStart, deferStride, deferLen)
 				}
 			}
 		}
 	}
-	recurse(shape, specShape, 0, 0, spec, 0, 0, 0)
+	recurse(shape, specShape, 0, spec, 0, 0, 0)
 	return &Mat{M: outVec, S: shape}
 }
 
