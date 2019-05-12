@@ -13,17 +13,17 @@ const (
 	NumberToken
 	VariableToken
 	OperatorToken
-	OpenToken
+	OpenToken // 5
 	CloseToken
 	OpenSquareToken
 	CloseSquareToken
 	SemiToken
-	InnerProductToken
+	InnerProductToken // 10
 	OuterProductToken
 	OpenCurlyToken
 	CloseCurlyToken
 	KeywordToken
-	ReduceToken
+	ReduceToken // 15
 	ScanToken
 	EachToken
 	StringToken

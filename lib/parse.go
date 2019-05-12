@@ -137,8 +137,8 @@ func (p *Parser) ParseIf(lex *Lex, i int) (*Cond, int) {
 	elseSeq, j := p.ParseSeq(lex, i)
 	i = j
 	t = tt[i]
-	if t.Str != "FI" {
-		Log.Panicf("expected `FI` but got %q", t.Str)
+	if t.Str != "fi" {
+		Log.Panicf("expected `fI` but got %q", t.Str)
 	}
 	z := &Cond{ifSeq, thenSeq, elseSeq}
 	Log.Printf("ParseIf returns %v", z)

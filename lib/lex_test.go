@@ -26,6 +26,7 @@ func TestWhite(t *testing.T) {
 	got := Tokenize(s)
 	want := &Lex{
 		Tokens: []*Token{
+			{SemiToken, "\n", 2, []string{"\n"}},
 			{EndToken, "", len(s), nil},
 		},
 		Source: s,
