@@ -2,6 +2,7 @@ package livy
 
 import (
 	"fmt"
+	"log"
 	"runtime/debug"
 )
 
@@ -127,19 +128,19 @@ func (o Monad) Eval(c *Context) Val {
 		fn = MkEachOpMonadic(o.Token.Str, fn1)
 	}
 
-	b := o.B.Eval(c)
+	b := EvalFor(c, o.B, "RHS of Monadic expression", o.Op)
 	Log.Printf("Monad:Eval %s %s -> ?", o.Op, b)
 	axis := DefaultAxis
 	if o.Axis != nil {
-		axis = o.Axis.Eval(c).GetScalarInt()
+		axis = EvalFor(c, o.Axis, "Axis of Monadic expression", o.Op).GetScalarInt()
 	}
-	z := fn(c, b, axis)
+	z := CallFor(c, func() Val { return fn(c, b, axis) }, "evaluation of Monadic function", o.Op)
 	Log.Printf("Monad:Eval %s %s -> %s", o.Op, b, z)
 	return z
 }
 
 func (o Dyad) Assign(c *Context) Val {
-	b := o.B.Eval(c)
+	b := EvalFor(c, o.B, "Assignment", o.Op)
 	switch t := o.A.(type) {
 	case *Subscript:
 		return t.Assign(c, b)
@@ -195,15 +196,18 @@ func (o Dyad) Eval(c *Context) Val {
 		}
 		fn = MkOuterProduct(o.Token.Str, fn1)
 	}
-	a := o.A.Eval(c)
+
+	b := EvalFor(c, o.B, "RHS of Dyadic expression", o.Op)
 	axis := DefaultAxis
 	if o.Axis != nil {
-		axis = o.Axis.Eval(c).GetScalarInt()
+		axis = EvalFor(c, o.Axis, "Axis of Dyadic expression", o.Op).GetScalarInt()
 	}
-	b := o.B.Eval(c)
+	a := EvalFor(c, o.A, "LHS of Dyadic expression", o.Op)
+
 	Log.Printf("Dyad:Eval %s %s %s -> ?", a, o.Op, b)
-	z := fn(c, a, b, axis)
+	z := CallFor(c, func() Val { return fn(c, a, b, axis) }, "evaluation of Dyadic function", o.Op)
 	Log.Printf("Dyad:Eval %s %s %s -> %s", a, o.Op, b, z)
+
 	return z
 }
 
@@ -400,16 +404,13 @@ func (o Subscript) Assign(c *Context, b Val) Val {
 	copy(matM, amat.M)               // Copy the contents.
 	mat := &Mat{matM, amat.S}        // New mat with newly copied contents.  Shape is immutable and can be shared.
 
-	//var newShape []int
 	var subscripts [][]int
 	for i, sub := range o.Vec {
 		if sub == nil {
 			// For missing subscripts, use entire range available in mat's shape.
 			subscripts = append(subscripts, intRange(mat.S[i]))
-			//newShape = append(newShape, mat.S[i])
 		} else {
-			r := sub.Eval(c).Ravel()
-			//newShape = append(newShape, len(r))
+			r := EvalFor(c, sub, "subscripts in subscripted assignment of variable", "").Ravel()
 			ints := make([]int, len(r))
 			for i, e := range r {
 				ints[i] = e.GetScalarInt()
@@ -555,4 +556,26 @@ func cx2bool(c complex128) bool {
 	}
 	Log.Panicf("Cannot use %s as a bool", Cx2Str(c))
 	panic(0)
+}
+
+func EvalFor(c *Context, expr Expression, why string, what string) Val {
+	defer func() {
+		r := recover()
+		if r != nil {
+			log.Printf("... during: %s: %s", why, what)
+			panic(r)
+		}
+	}()
+	return expr.Eval(c)
+}
+
+func CallFor(c *Context, fn func() Val, why string, what string) Val {
+	defer func() {
+		r := recover()
+		if r != nil {
+			log.Printf("... during: %s: %s", why, what)
+			panic(r)
+		}
+	}()
+	return fn()
 }

@@ -123,8 +123,22 @@ func ffxor(a, b float64) bool {
 
 func MkOuterProduct(name string, fn DyadicFunc) DyadicFunc {
 	return func(c *Context, a Val, b Val, axis int) Val {
-		aa := GetVectorOfScalarVals(a)
-		bb := GetVectorOfScalarVals(b)
+		ma, ok := a.(*Mat)
+		if !ok {
+			Log.Panicf("outer product: LHS not a matrix (%T)", a)
+		}
+		mb, ok := b.(*Mat)
+		if !ok {
+			Log.Panicf("outer product: RHS not a matrix (%T)", b)
+		}
+		if len(ma.S) != 1 {
+			Log.Panicf("outer product: LHS not a vector (rank %d)", len(ma.S))
+		}
+		if len(mb.S) != 1 {
+			Log.Panicf("outer product: RHS not a vector (rank %d)", len(mb.S))
+		}
+		aa := ma.M
+		bb := mb.M
 		sz := len(aa) * len(bb)
 		vec := make([]Val, sz)
 		for ia, fa := range aa {
