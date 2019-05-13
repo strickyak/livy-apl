@@ -227,6 +227,20 @@ LOOP:
 	for {
 		t := tt[i]
 		Log.Printf("........ [%d] %q %v", i, t.Str, t)
+
+		/*
+			// Special syntax check for named curly fn.
+			if len(tt) > i + 3 &&
+			tt[i].Type == OperatorToken &&
+			tt[i+1].Str == "=" &&
+			tt[i+2].Type == OpenCurlyToken {
+			  expr, j := ParseCurly(p, i+3)
+			  i = j
+			  continue LOOP
+			}
+		*/
+
+		// Big switch for normal cases.
 		switch t.Type {
 		case KeywordToken:
 			switch t.Str {
