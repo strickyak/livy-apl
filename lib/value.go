@@ -149,13 +149,152 @@ func (o Mat) PrettyMatrix(vec []string) string {
 	}
 	return bb.String()
 }
+
+func BoundingBoxString(s string) (w int, h int) {
+	w, h = 1, 1
+	c := 0 // cursor
+	for _, r := range s {
+		if r == '\n' {
+			if c > w {
+				w = c
+			}
+			c = 0
+			h++
+		} else {
+			c++
+		}
+	}
+	if c > w {
+		w = c
+	}
+	log.Printf("BBS: %q -> w=%d, h=%d", s, w, h)
+	return
+}
+
+func FillString(w, h int, s string) []string {
+	var zz []string
+
+	// Convert string to runes.
+	var rr []rune
+	for _, r := range s {
+		rr = append(rr, r)
+	}
+	i, rrlen := 0, len(rr)
+
+	for y := 0; y < h; y++ {
+		var bb bytes.Buffer
+		for x := 0; x < w; x++ {
+			if i >= rrlen {
+				bb.WriteByte(' ')
+			} else if rr[i] == '\n' {
+				bb.WriteByte(' ')
+			} else {
+				bb.WriteRune(rr[i])
+				i++
+			}
+		}
+		zz = append(zz, bb.String())
+		i++
+	}
+	log.Printf("FillString(%d, %d): <- %q", w, h, s)
+	for i, z := range zz {
+		log.Printf("FillString[ %d ] : -> %q", i, z)
+	}
+	return zz
+}
+
+func RenderBoxString(sss [][]string, border int) string {
+	var z bytes.Buffer
+	var maxw, maxh []int
+
+	for y, ss := range sss {
+		for x, s := range ss {
+			log.Printf("Render (%d, %d): %q", x, y, s)
+		}
+	}
+
+	for y, ss := range sss {
+		for x, s := range ss {
+			w, h := BoundingBoxString(s)
+			if len(maxw) <= x {
+				maxw = append(maxw, w)
+			} else {
+				if maxw[x] < w {
+					maxw[x] = w
+				}
+			}
+			if len(maxh) <= y {
+				maxh = append(maxh, h)
+			} else {
+				if maxh[y] < h {
+					maxh[y] = h
+				}
+			}
+		}
+	}
+
+	for y, ss := range sss {
+		var ff [][]string
+		for x, s := range ss {
+			f := FillString(maxw[x], maxh[y], s)
+			ff = append(ff, f)
+		}
+
+		for i := 0; i < maxh[y]; i++ {
+			for _, f := range ff {
+				z.WriteString(f[i])
+			}
+			z.WriteByte('\n')
+		}
+		for i := 0; i < border; i++ {
+			z.WriteByte('\n')
+		}
+	}
+
+	return z.String()
+}
+
+func RenderPrettyMatrix(mat Mat) string {
+	var hologram [][]string // as if it were 2d.
+
+	in := mat.M
+	lastLen := mat.S[len(mat.S)-1]
+
+	var recurse func(shape []int, p int)
+	recurse = func(shape []int, p int) {
+		switch len(shape) {
+		case 0:
+			panic("impossible")
+		case 1:
+			var ss []string
+			for i := 0; i < shape[0]; i++ {
+				s := in[p+i].Pretty()
+				ss = append(ss, s)
+			}
+			hologram = append(hologram, ss)
+		default:
+			stride := Product(shape[1:])
+			for i := 0; i < shape[0]; i++ {
+				recurse(shape[1:], p+i*stride)
+			}
+
+			hologram = append(hologram, make([]string, lastLen))
+		}
+	}
+	recurse(mat.S, 0)
+	z := RenderBoxString(hologram, 0)
+	return z
+}
+
 func (o Mat) Pretty() string {
 	var bb bytes.Buffer
 	rank := len(o.S)
 	switch rank {
 	case 0:
-		return "(* TODO: Mat rank 0 *) " /* + o.M[0].Pretty() */
+		log.Panicf("(* OH NO: Mat rank 0 *) ")
 	case 1:
+		return RenderPrettyMatrix(o)
+		//TODO
 		if len(o.M) != o.S[0] {
 			log.Panicf("matrix shape %v but contains %d elements: %#v", o.S, len(o.M), o)
 		}
@@ -163,6 +302,9 @@ func (o Mat) Pretty() string {
 			bb.WriteString(v.String())
 		}
 	default:
+		return RenderPrettyMatrix(o)
+		//TODO
+
 		var ss []string
 		// Get String of each matrix element.
 		for _, x := range o.M {
@@ -191,15 +333,51 @@ func (o Mat) Pretty() string {
 	}
 	return bb.String()
 }
+
+const box_h = 0x2550
+const box_v = 0x2551
+const box_nw = 0x2554
+const box_ne = 0x2557
+const box_sw = 0x255A
+const box_se = 0x255D
+
 func (o Box) Pretty() string {
+	var s string
 	switch t := o.X.(type) {
+	case Val:
+		s = t.Pretty()
 	case string:
-		return fmt.Sprintf("%q", t)
+		return fmt.Sprintf("%q", t) // Omit drawing a box.
 	case fmt.Stringer:
-		return fmt.Sprintf("%q", t.String())
+		s = fmt.Sprintf("%q", t.String())
 	default:
-		return fmt.Sprintf("(Box of %T: %v) ", o.X, o.X)
+		s = fmt.Sprintf("(Box of %T: %v) ", o.X, o.X)
 	}
+
+	w, h := BoundingBoxString(s)
+	ff := FillString(w, h, s)
+	var bb bytes.Buffer
+	bb.WriteRune(box_nw)
+	for i := 0; i < w; i++ {
+		bb.WriteRune(box_h)
+	}
+	bb.WriteRune(box_ne)
+	bb.WriteByte(' ')
+	bb.WriteByte('\n')
+	for _, f := range ff {
+		bb.WriteRune(box_v)
+		bb.WriteString(f)
+		bb.WriteRune(box_v)
+		bb.WriteByte(' ')
+		bb.WriteByte('\n')
+	}
+	bb.WriteRune(box_sw)
+	for i := 0; i < w; i++ {
+		bb.WriteRune(box_h)
+	}
+	bb.WriteRune(box_se)
+	bb.WriteByte(' ')
+	return bb.String()
 }
 
 /*
