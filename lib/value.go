@@ -167,7 +167,7 @@ func BoundingBoxString(s string) (w int, h int) {
 	if c > w {
 		w = c
 	}
-	log.Printf("BBS: %q -> w=%d, h=%d", s, w, h)
+	//log.Printf("BBS: %q -> w=%d, h=%d", s, w, h)
 	return
 }
 
@@ -196,10 +196,10 @@ func FillString(w, h int, s string) []string {
 		zz = append(zz, bb.String())
 		i++
 	}
-	log.Printf("FillString(%d, %d): <- %q", w, h, s)
-	for i, z := range zz {
-		log.Printf("FillString[ %d ] : -> %q", i, z)
-	}
+	//log.Printf("FillString(%d, %d): <- %q", w, h, s)
+	//for i, z := range zz {
+	//log.Printf("FillString[ %d ] : -> %q", i, z)
+	//}
 	return zz
 }
 
@@ -207,11 +207,11 @@ func RenderBoxString(sss [][]string, border int) string {
 	var z bytes.Buffer
 	var maxw, maxh []int
 
-	for y, ss := range sss {
-		for x, s := range ss {
-			log.Printf("Render (%d, %d): %q", x, y, s)
-		}
-	}
+	//for y, ss := range sss {
+	//for x, s := range ss {
+	//log.Printf("Render (%d, %d): %q", x, y, s)
+	//}
+	//}
 
 	for y, ss := range sss {
 		for x, s := range ss {
@@ -251,7 +251,14 @@ func RenderBoxString(sss [][]string, border int) string {
 		}
 	}
 
-	return z.String()
+	s := z.String()
+
+	// Trim trailing newlines.
+	n := len(s)
+	for n > 0 && s[n-1] == '\n' {
+		n--
+	}
+	return s[:n]
 }
 
 func RenderPrettyMatrix(mat Mat) string {
@@ -260,8 +267,8 @@ func RenderPrettyMatrix(mat Mat) string {
 	in := mat.M
 	lastLen := mat.S[len(mat.S)-1]
 
-	var recurse func(shape []int, p int)
-	recurse = func(shape []int, p int) {
+	var recurse func(shape []int, p int, last bool)
+	recurse = func(shape []int, p int, last bool) {
 		switch len(shape) {
 		case 0:
 			panic("impossible")
@@ -275,13 +282,15 @@ func RenderPrettyMatrix(mat Mat) string {
 		default:
 			stride := Product(shape[1:])
 			for i := 0; i < shape[0]; i++ {
-				recurse(shape[1:], p+i*stride)
+				recurse(shape[1:], p+i*stride, last && i == shape[0]-1)
 			}
 
-			hologram = append(hologram, make([]string, lastLen))
+			if !last {
+				hologram = append(hologram, make([]string, lastLen))
+			}
 		}
 	}
-	recurse(mat.S, 0)
+	recurse(mat.S, 0, true)
 	z := RenderBoxString(hologram, 0)
 	return z
 }
@@ -325,7 +334,7 @@ func (o Mat) Pretty() string {
 					s = " " + s
 				}
 				ss[i] = s
-				Log.Printf("%d/%d/%q", i, len(ss[i]), ss[i])
+				//Log.Printf("%d/%d/%q", i, len(ss[i]), ss[i])
 			}
 		}
 
