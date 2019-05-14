@@ -356,9 +356,9 @@ func (o Box) Pretty() string {
 	case Val:
 		s = t.Pretty()
 	case string:
-		return fmt.Sprintf("%q", t) // Omit drawing a box.
+		return fmt.Sprintf("%q ", t) // Omit drawing a box.
 	case fmt.Stringer:
-		s = fmt.Sprintf("%q", t.String())
+		s = fmt.Sprintf("%q ", t.String())
 	default:
 		s = fmt.Sprintf("(Box of %T: %v) ", o.X, o.X)
 	}
