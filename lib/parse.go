@@ -11,6 +11,12 @@ package livy
 	  — Edsger W. Dijkstra
 	https://www.cs.utexas.edu/users/EWD/transcriptions/EWD08xx/EWD831.html
 
+	"In any case, the present proposal is to adopt a fixed index origin for all new
+	 functions and operators and to make this origin zero."
+	  — Kenneth E. Iverson
+	Originally appeared in the APL83 Conference Proceedings, APL Quote Quad, Volume 13, Number 3, 1983-03.
+	https://www.jsoftware.com/papers/APLSyntaxSemantics.htm
+
 	"I used to describe [Pascal] as a ‘fascist programming language’,
 	 because it is dictatorially rigid. …
 	 If Pascal is fascist, APL is anarchist."
