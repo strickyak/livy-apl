@@ -23,7 +23,9 @@ var StandardDyadics = map[string]DyadicFunc{
 	"rot":       dyadicRot,
 	"take":      dyadicTake,
 	"drop":      dyadicDrop,
-	`/`:         dyadicCompress,
+	"compress":  dyadicCompress,
+	"expand":    dyadicExpand,
+  // `/`:         dyadicCompress,
 	`\`:         dyadicExpand,
 
 	"==": WrapMatMatDyadic(WrapCxBoolDyadic(
@@ -48,6 +50,8 @@ var StandardDyadics = map[string]DyadicFunc{
 		func(a, b complex128) complex128 { return a - b })),
 	"*": WrapMatMatDyadic(WrapCxDyadic(
 		func(a, b complex128) complex128 { return a * b })),
+	"/": WrapMatMatDyadic(WrapCxDyadic(
+		func(a, b complex128) complex128 { return a / b })),
 	"div": WrapMatMatDyadic(WrapCxDyadic(
 		func(a, b complex128) complex128 { return a / b })),
 	"**": WrapMatMatDyadic(WrapCxDyadic(
